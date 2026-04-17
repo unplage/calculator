@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>科学计算器 · 支持括号与优先级</title>
+    <title>科学计算器</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         * {
@@ -196,12 +196,32 @@
             padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px));
         }
 
-        /* 科学按键区域 */
+        /* 科学按键区域 — 三行按钮整体高度压缩为原来的2/3，椭圆形 */
         .scientific-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
+            gap: 6px;          /* 略微缩小间距，视觉更紧凑 */
             margin-bottom: 12px;
+        }
+
+        /* 科学按钮专属样式：高度为宽度的2/3 (原高度压缩) + 椭圆形状 */
+        .scientific-grid .btn {
+            aspect-ratio: 1 / 0.6667;    /* 高度 = 宽度 * 2/3 */
+            border-radius: 50%;          /* 宽高不等时自动形成椭圆 */
+            font-size: clamp(0.7rem, 3.5vw, 0.9rem);
+            background: #3a3a3c;
+            font-weight: 500;
+        }
+
+        /* 角度/弧度切换按钮保持高亮风格 */
+        .scientific-grid .deg-rad-btn {
+            background: #1c1c1e;
+            color: #ff9500;
+            font-weight: 600;
+        }
+        .scientific-grid .deg-rad-btn.active {
+            background: #ff9500;
+            color: #000;
         }
 
         /* 主键盘区域 */
@@ -211,7 +231,7 @@
             gap: 8px;
         }
 
-        /* 通用按钮样式 */
+        /* 通用按钮样式 (主键盘保持正方形) */
         .btn {
             aspect-ratio: 1 / 1;
             border-radius: 60px;
@@ -266,25 +286,7 @@
             padding-left: 28px;
         }
 
-        /* 科学模式小按钮微调 */
-        .sci-btn {
-            font-size: 0.9rem;
-            font-weight: 500;
-            background: #3a3a3c;
-        }
-
-        .deg-rad-btn {
-            background: #1c1c1e;
-            color: #ff9500;
-            font-weight: 600;
-        }
-
-        .deg-rad-btn.active {
-            background: #ff9500;
-            color: #000;
-        }
-
-        /* 横屏 & 小高度优化 */
+        /* 横屏 & 小高度优化 (确保科学按钮的椭圆形状依然合理) */
         @media (max-height: 600px) {
             .display {
                 min-height: 100px;
@@ -299,8 +301,8 @@
             .btn {
                 font-size: 1.3rem;
             }
-            .sci-btn {
-                font-size: 0.75rem;
+            .scientific-grid .btn {
+                font-size: clamp(0.65rem, 3vw, 0.8rem);
             }
             .btn-func {
                 font-size: 1rem;
@@ -319,13 +321,13 @@
                 flex: 1;
             }
             .scientific-grid {
-                gap: 6px;
+                gap: 5px;
             }
             .main-grid {
                 gap: 6px;
             }
-            .btn {
-                aspect-ratio: 1.2;
+            .scientific-grid .btn {
+                aspect-ratio: 1 / 0.7;
             }
         }
 
@@ -379,28 +381,28 @@
     <!-- 可滚动键盘区 -->
     <div class="keyboard-scroll">
         <div class="keyboard-inner">
-            <!-- 科学函数面板 -->
+            <!-- 科学函数面板 (三行, 按钮已压缩为椭圆) -->
             <div class="scientific-grid" id="scientificGrid">
-                <button class="btn sci-btn deg-rad-btn" id="degRadToggle">DEG</button>
-                <button class="btn sci-btn" data-func="sin">sin</button>
-                <button class="btn sci-btn" data-func="cos">cos</button>
-                <button class="btn sci-btn" data-func="tan">tan</button>
-                <button class="btn sci-btn" data-func="π">π</button>
+                <button class="btn deg-rad-btn" id="degRadToggle">DEG</button>
+                <button class="btn" data-func="sin">sin</button>
+                <button class="btn" data-func="cos">cos</button>
+                <button class="btn" data-func="tan">tan</button>
+                <button class="btn" data-func="π">π</button>
 
-                <button class="btn sci-btn" data-func="x²">x²</button>
-                <button class="btn sci-btn" data-func="xⁿ">xⁿ</button>
-                <button class="btn sci-btn" data-func="√">√</button>
-                <button class="btn sci-btn" data-func="ln">ln</button>
-                <button class="btn sci-btn" data-func="log">log</button>
+                <button class="btn" data-func="x²">x²</button>
+                <button class="btn" data-func="xⁿ">xⁿ</button>
+                <button class="btn" data-func="√">√</button>
+                <button class="btn" data-func="ln">ln</button>
+                <button class="btn" data-func="log">log</button>
 
-                <button class="btn sci-btn" data-func="(">(</button>
-                <button class="btn sci-btn" data-func=")">)</button>
-                <button class="btn sci-btn" data-func="1/x">1/x</button>
-                <button class="btn sci-btn" data-func="e">e</button>
-                <button class="btn sci-btn" data-func="n!">n!</button>
+                <button class="btn" data-func="(">(</button>
+                <button class="btn" data-func=")">)</button>
+                <button class="btn" data-func="1/x">1/x</button>
+                <button class="btn" data-func="e">e</button>
+                <button class="btn" data-func="n!">n!</button>
             </div>
 
-            <!-- 主键盘 -->
+            <!-- 主键盘 (保持不变) -->
             <div class="main-grid">
                 <button class="btn btn-func" id="soundToggleBtn">🔊</button>
                 <button class="btn btn-func" id="clearAllBtn">AC</button>
@@ -548,7 +550,6 @@
                 if (!isNaN(idx) && historyList[idx]) {
                     buttonFeedback();
                     const pastResult = historyList[idx].result;
-                    // 将结果放入当前显示，并清空表达式区域，便于继续计算
                     expression = "";
                     updateExpressionDisplay();
                     setCurrentDisplay(pastResult);
@@ -641,7 +642,7 @@
         processed = processed.replace(/ln\(/g, 'Math.log(');
         processed = processed.replace(/log\(/g, 'Math.log10(');
         processed = processed.replace(/√\(/g, 'Math.sqrt(');
-        // 处理 x² (平方) 注意可能后面跟数字，转化成平方
+        // 处理 x² (平方) 注意后面可能跟数字，转化成平方
         processed = processed.replace(/(\d+(?:\.\d+)?|\))\s*x²/g, '($1)**2');
         processed = processed.replace(/x²/g, '**2');
         // 处理 1/x
@@ -736,7 +737,7 @@
         }
         expression += char;
         updateExpressionDisplay();
-        // 实时尝试计算并显示预览？为了符合计算器习惯，实时显示当前表达式的计算结果（可选）
+        // 实时尝试计算并显示预览（可选）
         try {
             let preview = evaluateExpression(expression, isDegreeMode);
             if (!isNaN(preview) && isFinite(preview)) {
@@ -755,7 +756,6 @@
         } else if (func === 'e') {
             appendToExpression('e');
         } else if (func === 'x²') {
-            // 在表达式末尾添加平方
             appendToExpression('^2');
         } else if (func === 'xⁿ') {
             appendToExpression('^');
