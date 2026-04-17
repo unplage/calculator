@@ -1,6 +1,6 @@
 {
     "name": "Calculator - 科学计算",
-    "short_name": "WordLearner",
+    "short_name": "Calculator",
     "description": "一个功能强大的科学计算器应用",
     "start_url": "/calculator/",
     "display": "standalone",
