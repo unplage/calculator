@@ -2,10 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>iOS 计算器</title>
+    <link rel="manifest" href="./manifest.json">
     <style>
         * {
             margin: 0;
@@ -15,25 +16,28 @@
             user-select: none;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: #000;
-            min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            align-items: flex-end;
         }
 
         .calculator {
             width: 100%;
-            max-width: 414px;
-            height: 100vh;
-            max-height: 896px;
+            height: 100%;
+            max-width: 430px;
             background: #000;
             display: flex;
             flex-direction: column;
             position: relative;
+            padding-bottom: env(safe-area-inset-bottom, 0);
         }
 
         /* 历史记录面板 */
@@ -43,7 +47,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.98);
             z-index: 100;
             transform: translateX(-100%);
             transition: transform 0.3s ease;
@@ -59,8 +63,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
+            padding: 15px 20px;
+            padding-top: max(15px, env(safe-area-inset-top, 15px));
             border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
 
         .history-title {
@@ -90,7 +96,7 @@
         }
 
         .history-item {
-            padding: 15px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #222;
             cursor: pointer;
         }
@@ -121,15 +127,25 @@
             flex-direction: column;
             justify-content: flex-end;
             align-items: flex-end;
-            padding: 20px;
-            padding-bottom: 10px;
+            padding: 10px 15px;
+            padding-top: max(10px, env(safe-area-inset-top, 10px));
             position: relative;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .display-header {
+            position: absolute;
+            top: max(10px, env(safe-area-inset-top, 10px));
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
         }
 
         .mode-indicator {
-            position: absolute;
-            top: 50px;
-            left: 20px;
             color: #ff9500;
             font-size: 12px;
             font-weight: 600;
@@ -137,44 +153,91 @@
         }
 
         .history-btn {
-            position: absolute;
-            top: 45px;
-            right: 20px;
             color: #ff9500;
             font-size: 20px;
             cursor: pointer;
-            padding: 10px;
-            z-index: 10;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .previous-operand {
             color: #999;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 300;
-            min-height: 30px;
+            min-height: 28px;
             word-break: break-all;
             max-width: 100%;
+            text-align: right;
+            margin-bottom: 5px;
         }
 
         .current-operand {
             color: #fff;
-            font-size: 64px;
+            font-size: clamp(36px, 12vw, 64px);
             font-weight: 200;
             word-break: break-all;
             max-width: 100%;
             line-height: 1.2;
+            text-align: right;
         }
 
-        /* 键盘区域 */
+        /* 键盘容器 */
+        .keypad-container {
+            flex-shrink: 0;
+            padding: 8px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+        }
+
+        /* 科学计算键盘 */
+        .scientific-keypad {
+            display: none;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #222;
+            margin-bottom: 8px;
+        }
+
+        .scientific-keypad.show {
+            display: block;
+        }
+
+        .scientific-keypad .keypad-row {
+            margin-bottom: 8px;
+        }
+
+        .scientific-keypad .btn {
+            width: 18%;
+            font-size: clamp(14px, 4vw, 18px);
+        }
+
+        .scientific-keypad .btn.function {
+            background: #2c2c2c;
+            color: #fff;
+        }
+
+        .scientific-keypad .btn.function:active {
+            background: #444;
+        }
+
+        .btn.deg-rad {
+            font-size: clamp(12px, 3.5vw, 14px) !important;
+            font-weight: 600;
+        }
+
+        /* 标准键盘 */
         .keypad {
-            padding: 10px;
-            padding-bottom: 30px;
+            width: 100%;
         }
 
         .keypad-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .keypad-row:last-child {
@@ -182,17 +245,18 @@
         }
 
         .btn {
-            width: 22%;
+            width: 23%;
             aspect-ratio: 1;
             border-radius: 50%;
             border: none;
-            font-size: 28px;
+            font-size: clamp(22px, 6vw, 28px);
             font-weight: 400;
             cursor: pointer;
             transition: all 0.1s ease;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .btn:active {
@@ -211,7 +275,7 @@
         .btn.operator {
             background: #ff9500;
             color: #fff;
-            font-size: 32px;
+            font-size: clamp(26px, 7vw, 32px);
         }
 
         .btn.operator:active {
@@ -233,54 +297,22 @@
         }
 
         .btn.zero {
-            width: 47%;
+            width: 48%;
             aspect-ratio: auto;
             border-radius: 50px;
             justify-content: flex-start;
-            padding-left: 32px;
+            padding-left: 28px;
         }
 
         .btn.mode-toggle {
             background: #2c2c2c;
             color: #ff9500;
-            font-size: 18px;
+            font-size: clamp(14px, 4vw, 18px);
             font-weight: 600;
         }
 
         .btn.mode-toggle:active {
             background: #444;
-        }
-
-        /* 科学计算模式 */
-        .scientific-keypad {
-            display: none;
-            padding: 10px;
-            padding-bottom: 0;
-            border-top: 1px solid #222;
-        }
-
-        .scientific-keypad.show {
-            display: block;
-        }
-
-        .scientific-keypad .btn {
-            width: 18%;
-            font-size: 20px;
-        }
-
-        .scientific-keypad .btn.function {
-            background: #2c2c2c;
-            color: #fff;
-            font-size: 18px;
-        }
-
-        .scientific-keypad .btn.function:active {
-            background: #444;
-        }
-
-        .btn.deg-rad {
-            font-size: 14px !important;
-            font-weight: 600;
         }
 
         /* 滚动条样式 */
@@ -295,6 +327,33 @@
         .history-list::-webkit-scrollbar-thumb {
             background: #333;
             border-radius: 2px;
+        }
+
+        /* 横屏适配 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .calculator {
+                flex-direction: row;
+            }
+
+            .display {
+                flex: 0 0 40%;
+                padding: 10px;
+            }
+
+            .keypad-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .current-operand {
+                font-size: clamp(24px, 8vh, 40px);
+            }
+
+            .previous-operand {
+                font-size: 16px;
+            }
         }
     </style>
 <base target="_blank">
@@ -315,67 +374,72 @@
 
         <!-- 显示区域 -->
         <div class="display">
-            <span class="mode-indicator" id="modeIndicator">标准</span>
-            <span class="history-btn" onclick="toggleHistory()">🕐</span>
+            <div class="display-header">
+                <span class="mode-indicator" id="modeIndicator">标准</span>
+                <span class="history-btn" onclick="toggleHistory()">🕐</span>
+            </div>
             <div class="previous-operand" id="previousOperand"></div>
             <div class="current-operand" id="currentOperand">0</div>
         </div>
 
-        <!-- 科学计算键盘 -->
-        <div class="scientific-keypad" id="scientificKeypad">
-            <div class="keypad-row">
-                <button class="btn function deg-rad" onclick="toggleDegRad()" id="degRadBtn">DEG</button>
-                <button class="btn function" onclick="handleScientific('sin')">sin</button>
-                <button class="btn function" onclick="handleScientific('cos')">cos</button>
-                <button class="btn function" onclick="handleScientific('tan')">tan</button>
-                <button class="btn function" onclick="handleScientific('π')">π</button>
+        <!-- 键盘容器 -->
+        <div class="keypad-container">
+            <!-- 科学计算键盘 -->
+            <div class="scientific-keypad" id="scientificKeypad">
+                <div class="keypad-row">
+                    <button class="btn function deg-rad" onclick="toggleDegRad()" id="degRadBtn">DEG</button>
+                    <button class="btn function" onclick="handleScientific('sin')">sin</button>
+                    <button class="btn function" onclick="handleScientific('cos')">cos</button>
+                    <button class="btn function" onclick="handleScientific('tan')">tan</button>
+                    <button class="btn function" onclick="handleScientific('π')">π</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn function" onclick="handleScientific('x²')">x²</button>
+                    <button class="btn function" onclick="handleScientific('xⁿ')">xⁿ</button>
+                    <button class="btn function" onclick="handleScientific('√')">√</button>
+                    <button class="btn function" onclick="handleScientific('ln')">ln</button>
+                    <button class="btn function" onclick="handleScientific('log')">log</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn function" onclick="handleScientific('(')">(</button>
+                    <button class="btn function" onclick="handleScientific(')')">)</button>
+                    <button class="btn function" onclick="handleScientific('1/x')">1/x</button>
+                    <button class="btn function" onclick="handleScientific('e')">e</button>
+                    <button class="btn function" onclick="handleScientific('n!')">n!</button>
+                </div>
             </div>
-            <div class="keypad-row">
-                <button class="btn function" onclick="handleScientific('x²')">x²</button>
-                <button class="btn function" onclick="handleScientific('xⁿ')">xⁿ</button>
-                <button class="btn function" onclick="handleScientific('√')">√</button>
-                <button class="btn function" onclick="handleScientific('ln')">ln</button>
-                <button class="btn function" onclick="handleScientific('log')">log</button>
-            </div>
-            <div class="keypad-row">
-                <button class="btn function" onclick="handleScientific('(')">(</button>
-                <button class="btn function" onclick="handleScientific(')')">)</button>
-                <button class="btn function" onclick="handleScientific('1/x')">1/x</button>
-                <button class="btn function" onclick="handleScientific('e')">e</button>
-                <button class="btn function" onclick="handleScientific('n!')">n!</button>
-            </div>
-        </div>
 
-        <!-- 标准键盘 -->
-        <div class="keypad">
-            <div class="keypad-row">
-                <button class="btn function mode-toggle" onclick="toggleMode()">Sci</button>
-                <button class="btn function" onclick="clearAll()">AC</button>
-                <button class="btn function" onclick="deleteLast()">back</button>
-                <button class="btn operator" onclick="handleOperator('/')">÷</button>
-            </div>
-            <div class="keypad-row">
-                <button class="btn number" onclick="appendNumber('7')">7</button>
-                <button class="btn number" onclick="appendNumber('8')">8</button>
-                <button class="btn number" onclick="appendNumber('9')">9</button>
-                <button class="btn operator" onclick="handleOperator('*')">×</button>
-            </div>
-            <div class="keypad-row">
-                <button class="btn number" onclick="appendNumber('4')">4</button>
-                <button class="btn number" onclick="appendNumber('5')">5</button>
-                <button class="btn number" onclick="appendNumber('6')">6</button>
-                <button class="btn operator" onclick="handleOperator('-')">−</button>
-            </div>
-            <div class="keypad-row">
-                <button class="btn number" onclick="appendNumber('1')">1</button>
-                <button class="btn number" onclick="appendNumber('2')">2</button>
-                <button class="btn number" onclick="appendNumber('3')">3</button>
-                <button class="btn operator" onclick="handleOperator('+')">+</button>
-            </div>
-            <div class="keypad-row">
-                <button class="btn number zero" onclick="appendNumber('0')">0</button>
-                <button class="btn number" onclick="appendNumber('.')">.</button>
-                <button class="btn operator" onclick="calculate()">=</button>
+            <!-- 标准键盘 -->
+            <div class="keypad">
+                <div class="keypad-row">
+                    <button class="btn function mode-toggle" onclick="toggleMode()">Sci</button>
+                    <button class="btn function" onclick="clearAll()">AC</button>
+                    <button class="btn function" onclick="deleteLast()">⌫</button>
+                    <button class="btn operator" onclick="handleOperator('/')">÷</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn number" onclick="appendNumber('7')">7</button>
+                    <button class="btn number" onclick="appendNumber('8')">8</button>
+                    <button class="btn number" onclick="appendNumber('9')">9</button>
+                    <button class="btn operator" onclick="handleOperator('*')">×</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn number" onclick="appendNumber('4')">4</button>
+                    <button class="btn number" onclick="appendNumber('5')">5</button>
+                    <button class="btn number" onclick="appendNumber('6')">6</button>
+                    <button class="btn operator" onclick="handleOperator('-')">−</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn number" onclick="appendNumber('1')">1</button>
+                    <button class="btn number" onclick="appendNumber('2')">2</button>
+                    <button class="btn number" onclick="appendNumber('3')">3</button>
+                    <button class="btn operator" onclick="handleOperator('+')">+</button>
+                </div>
+                <div class="keypad-row">
+                    <button class="btn number zero" onclick="appendNumber('0')">0</button>
+                    <button class="btn number" onclick="appendNumber('.')">.</button>
+                    <button class="btn operator" onclick="calculate()">=</button>
+                </div>
             </div>
         </div>
     </div>
@@ -731,6 +795,16 @@
             if (e.key === '*') handleOperator('*');
             if (e.key === '/') handleOperator('/');
         });
+
+        // 防止双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
