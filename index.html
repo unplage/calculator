@@ -503,8 +503,8 @@
                     <button class="btn function" onclick="handleScientific('log')">log</button>
                 </div>
                 <div class="keypad-row">
-                    <button class="btn function" onclick="handleScientific('(')">(</button>
-                    <button class="btn function" onclick="handleScientific(')')">)</button>
+                    <button class="btn function" onclick="handleBracket('(')">(</button>
+                    <button class="btn function" onclick="handleBracket(')')">)</button>
                     <button class="btn function" onclick="handleScientific('1/x')">1/x</button>
                     <button class="btn function" onclick="handleScientific('e')">e</button>
                     <button class="btn function" onclick="handleScientific('n!')">n!</button>
@@ -569,14 +569,14 @@
         const soundBtn = document.getElementById('soundBtn');
         const feedbackToast = document.getElementById('feedbackToast');
 
-        // 音频上下文（用于按键音）
+        // 音频上下文
         let audioContext = null;
 
         // 初始化
         updateHistoryDisplay();
         initAudio();
 
-        // 初始化音频上下文（需要用户交互后才能使用）
+        // 初始化音频上下文
         function initAudio() {
             document.addEventListener('click', () => {
                 if (!audioContext) {
@@ -596,7 +596,6 @@
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
 
-                // 短促的点击音
                 oscillator.frequency.value = 800;
                 oscillator.type = 'sine';
 
@@ -613,7 +612,7 @@
         // 震动反馈
         function vibrate() {
             if (navigator.vibrate) {
-                navigator.vibrate(10); // 短震动 10ms
+                navigator.vibrate(10);
             }
         }
 
@@ -655,6 +654,13 @@
         // 格式化数字显示
         function formatNumber(number) {
             if (number === '') return '';
+            if (number === '(' || number === ')') return number;
+
+            // 如果包含括号，直接返回
+            if (number.includes('(') || number.includes(')')) {
+                return number;
+            }
+
             const num = parseFloat(number);
             if (isNaN(num)) return number;
             if (num === 0) return '0';
@@ -689,7 +695,12 @@
                 currentOperand = number === '.' ? '0.' : number;
                 shouldResetScreen = false;
             } else {
-                if (number === '.' && currentOperand.includes('.')) return;
+                if (number === '.' && currentOperand.includes('.')) {
+                    // 检查最后一个数字是否已经有小数点
+                    const parts = currentOperand.split(/[\+\-\*\/\^\(\)]/);
+                    const lastPart = parts[parts.length - 1];
+                    if (lastPart.includes('.')) return;
+                }
                 if (currentOperand === '0' && number !== '.') {
                     currentOperand = number;
                 } else {
@@ -699,16 +710,50 @@
             updateDisplay();
         }
 
+        // 处理括号 - 独立的函数
+        function handleBracket(bracket) {
+            buttonFeedback();
+
+            if (bracket === '(') {
+                if (currentOperand === '0') {
+                    currentOperand = '(';
+                } else {
+                    // 检查是否需要在前面加乘号
+                    const lastChar = currentOperand.slice(-1);
+                    if (lastChar >= '0' && lastChar <= '9' || lastChar === ')') {
+                        currentOperand += '*(';
+                    } else {
+                        currentOperand += '(';
+                    }
+                }
+            } else if (bracket === ')') {
+                // 检查是否有未闭合的左括号
+                const openCount = (currentOperand.match(/\(/g) || []).length;
+                const closeCount = (currentOperand.match(/\)/g) || []).length;
+
+                if (openCount > closeCount) {
+                    currentOperand += ')';
+                }
+            }
+
+            updateDisplay();
+        }
+
         // 处理运算符
         function handleOperator(op) {
             buttonFeedback();
             if (currentOperand === '') return;
-            if (previousOperand !== '') {
-                calculate();
+
+            // 检查最后是否是运算符，如果是则替换
+            const lastChar = currentOperand.slice(-1);
+            if (['+', '-', '*', '/', '^'].includes(lastChar)) {
+                currentOperand = currentOperand.slice(0, -1) + op;
+            } else {
+                currentOperand += op;
             }
+
             operation = op;
-            previousOperand = currentOperand;
-            shouldResetScreen = true;
+            shouldResetScreen = false;
             updateDisplay();
 
             document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
@@ -718,51 +763,49 @@
         // 计算
         function calculate() {
             buttonFeedback();
-            if (operation === null || previousOperand === '' || currentOperand === '') return;
+            if (currentOperand === '' || currentOperand === '0') return;
 
-            let computation;
-            const prev = parseFloat(previousOperand);
-            const current = parseFloat(currentOperand);
+            try {
+                // 替换显示符号为 JavaScript 运算符
+                let expr = currentOperand
+                    .replace(/×/g, '*')
+                    .replace(/÷/g, '/')
+                    .replace(/−/g, '-')
+                    .replace(/\^/g, '**');
 
-            switch(operation) {
-                case '+':
-                    computation = prev + current;
-                    break;
-                case '-':
-                    computation = prev - current;
-                    break;
-                case '*':
-                    computation = prev * current;
-                    break;
-                case '/':
-                    if (current === 0) {
-                        showToast('不能除以零');
-                        return;
-                    }
-                    computation = prev / current;
-                    break;
-                case '^':
-                    computation = Math.pow(prev, current);
-                    break;
-                default:
+                // 补全未闭合的括号
+                const openCount = (expr.match(/\(/g) || []).length;
+                const closeCount = (expr.match(/\)/g) || []).length;
+                if (openCount > closeCount) {
+                    expr += ')'.repeat(openCount - closeCount);
+                }
+
+                // 安全计算
+                const result = Function('"use strict"; return (' + expr + ')')();
+
+                if (!isFinite(result)) {
+                    showToast('计算错误');
                     return;
+                }
+
+                addToHistory(currentOperand, result);
+                currentOperand = result.toString();
+                operation = null;
+                previousOperand = '';
+                shouldResetScreen = true;
+                updateDisplay();
+
+                document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
+            } catch (e) {
+                showToast('表达式错误');
+                console.error(e);
             }
-
-            const expression = `${formatNumber(previousOperand)} ${getOperatorSymbol(operation)} ${formatNumber(currentOperand)}`;
-            addToHistory(expression, computation);
-
-            currentOperand = computation.toString();
-            operation = null;
-            previousOperand = '';
-            shouldResetScreen = true;
-            updateDisplay();
-
-            document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
         }
 
         // 科学计算
         function handleScientific(func) {
             buttonFeedback();
+
             let value = parseFloat(currentOperand);
             let result;
             let expression;
@@ -781,7 +824,7 @@
                     result = isDegreeMode ? Math.tan(value * Math.PI / 180) : Math.tan(value);
                     break;
                 case '√':
-                    if (value < 0) {
+                    if (isNaN(value) || value < 0) {
                         showToast('不能对负数开平方');
                         return;
                     }
@@ -789,6 +832,10 @@
                     result = Math.sqrt(value);
                     break;
                 case 'x²':
+                    if (isNaN(value)) {
+                        showToast('无效输入');
+                        return;
+                    }
                     expression = `(${currentOperand})²`;
                     result = Math.pow(value, 2);
                     break;
@@ -796,7 +843,7 @@
                     handleOperator('^');
                     return;
                 case 'ln':
-                    if (value <= 0) {
+                    if (isNaN(value) || value <= 0) {
                         showToast('ln 的参数必须大于0');
                         return;
                     }
@@ -804,7 +851,7 @@
                     result = Math.log(value);
                     break;
                 case 'log':
-                    if (value <= 0) {
+                    if (isNaN(value) || value <= 0) {
                         showToast('log 的参数必须大于0');
                         return;
                     }
@@ -812,7 +859,7 @@
                     result = Math.log10(value);
                     break;
                 case '1/x':
-                    if (value === 0) {
+                    if (isNaN(value) || value === 0) {
                         showToast('不能除以零');
                         return;
                     }
@@ -820,7 +867,7 @@
                     result = 1 / value;
                     break;
                 case 'n!':
-                    if (value < 0 || !Number.isInteger(value)) {
+                    if (isNaN(value) || value < 0 || !Number.isInteger(value)) {
                         showToast('阶乘只适用于非负整数');
                         return;
                     }
@@ -835,24 +882,14 @@
                     result = Math.E;
                     expression = 'e';
                     break;
-                case '(':
-                    currentOperand = currentOperand === '0' ? '(' : currentOperand + '(';
-                    updateDisplay();
-                    return;
-                case ')':
-                    currentOperand += ')';
-                    updateDisplay();
-                    return;
                 default:
                     return;
             }
 
-            if (func !== '(' && func !== ')') {
-                addToHistory(expression, result);
-                currentOperand = result.toString();
-                shouldResetScreen = true;
-                updateDisplay();
-            }
+            addToHistory(expression, result);
+            currentOperand = result.toString();
+            shouldResetScreen = true;
+            updateDisplay();
         }
 
         // 阶乘计算
@@ -967,6 +1004,9 @@
             else if (e.key === '-') { buttonFeedback(); handleOperator('-'); }
             else if (e.key === '*') { buttonFeedback(); handleOperator('*'); }
             else if (e.key === '/') { buttonFeedback(); handleOperator('/'); }
+            else if (e.key === '(') { buttonFeedback(); handleBracket('('); }
+            else if (e.key === ')') { buttonFeedback(); handleBracket(')'); }
+            else if (e.key === '^') { buttonFeedback(); handleOperator('^'); }
         });
 
         // 防止双击缩放
