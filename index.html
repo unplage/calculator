@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>iOS 计算器</title>
+    <title>科学计算器</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         * {
@@ -120,11 +120,11 @@
             font-size: 16px;
         }
 
-        /* 显示区域 - 固定高度 */
+        /* 显示区域 */
         .display {
             flex: 0 0 auto;
             min-height: 120px;
-            max-height: 25vh;
+            max-height: 22vh;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
@@ -188,27 +188,22 @@
             text-align: right;
         }
 
-        /* 键盘容器 - 自适应 */
+        /* 键盘容器 */
         .keypad-container {
             flex: 0 0 auto;
             padding: 8px;
             padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
-            max-height: 75vh;
+            max-height: 78vh;
             display: flex;
             flex-direction: column;
         }
 
         /* 科学计算键盘 */
         .scientific-keypad {
-            display: none;
             flex: 0 0 auto;
             padding-bottom: 6px;
             border-bottom: 1px solid #222;
             margin-bottom: 6px;
-        }
-
-        .scientific-keypad.show {
-            display: block;
         }
 
         .scientific-keypad .keypad-row {
@@ -237,6 +232,11 @@
             font-weight: 600;
         }
 
+        .btn.deg-rad.active {
+            background: #ff9500 !important;
+            color: #fff !important;
+        }
+
         /* 标准键盘 */
         .keypad {
             flex: 0 0 auto;
@@ -262,7 +262,7 @@
             font-size: clamp(20px, 5.5vw, 26px);
             font-weight: 400;
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all 0.05s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -270,7 +270,8 @@
         }
 
         .btn:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
+            filter: brightness(1.3);
         }
 
         .btn.function {
@@ -314,15 +315,37 @@
             padding-left: 24px;
         }
 
-        .btn.mode-toggle {
-            background: #2c2c2c;
-            color: #ff9500;
-            font-size: clamp(13px, 3.5vw, 16px);
-            font-weight: 600;
+        /* 设置按钮 */
+        .btn.settings-btn {
+            background: #1c1c1c;
+            color: #666;
+            font-size: 18px;
         }
 
-        .btn.mode-toggle:active {
-            background: #444;
+        .btn.settings-btn:active {
+            background: #333;
+        }
+
+        /* 震动反馈提示 */
+        .feedback-toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        .feedback-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
 
         /* 滚动条样式 */
@@ -343,20 +366,22 @@
         @media (max-height: 700px) {
             .display {
                 min-height: 100px;
+                max-height: 20vh;
                 padding: 10px 12px;
             }
 
             .previous-operand {
-                font-size: 18px;
+                font-size: 16px;
                 margin-top: 35px;
             }
 
             .current-operand {
-                font-size: clamp(28px, 9vw, 48px);
+                font-size: clamp(26px, 8vw, 44px);
             }
 
             .keypad-container {
                 padding: 6px;
+                max-height: 80vh;
             }
 
             .keypad-row {
@@ -368,12 +393,27 @@
             }
 
             .btn {
-                font-size: clamp(18px, 5vw, 24px);
+                font-size: clamp(17px, 4.5vw, 22px);
             }
 
             .scientific-keypad .btn {
-                font-size: clamp(12px, 3vw, 14px);
+                font-size: clamp(11px, 2.8vw, 13px);
                 aspect-ratio: 1.2;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .display {
+                min-height: 80px;
+                max-height: 18vh;
+            }
+
+            .current-operand {
+                font-size: clamp(22px, 7vw, 36px);
+            }
+
+            .scientific-keypad .btn {
+                aspect-ratio: 1.1;
             }
         }
 
@@ -384,7 +424,7 @@
             }
 
             .display {
-                flex: 0 0 35%;
+                flex: 0 0 32%;
                 min-height: auto;
                 max-height: none;
                 padding: 10px;
@@ -396,20 +436,25 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
-                padding: 10px;
+                padding: 8px;
             }
 
             .current-operand {
-                font-size: clamp(20px, 6vh, 36px);
+                font-size: clamp(18px, 5vh, 32px);
             }
 
             .previous-operand {
-                font-size: 14px;
+                font-size: 13px;
                 margin-top: 30px;
             }
 
             .scientific-keypad .btn {
                 aspect-ratio: 1.5;
+                font-size: clamp(11px, 2.5vh, 14px);
+            }
+
+            .btn {
+                font-size: clamp(16px, 4vh, 22px);
             }
         }
     </style>
@@ -432,7 +477,7 @@
         <!-- 显示区域 -->
         <div class="display">
             <div class="display-header">
-                <span class="mode-indicator" id="modeIndicator">标准</span>
+                <span class="mode-indicator" id="degRadIndicator">DEG</span>
                 <span class="history-btn" onclick="toggleHistory()">🕐</span>
             </div>
             <div class="previous-operand" id="previousOperand"></div>
@@ -444,7 +489,7 @@
             <!-- 科学计算键盘 -->
             <div class="scientific-keypad" id="scientificKeypad">
                 <div class="keypad-row">
-                    <button class="btn function deg-rad" onclick="toggleDegRad()" id="degRadBtn">DEG</button>
+                    <button class="btn function deg-rad active" onclick="toggleDegRad()" id="degRadBtn">DEG</button>
                     <button class="btn function" onclick="handleScientific('sin')">sin</button>
                     <button class="btn function" onclick="handleScientific('cos')">cos</button>
                     <button class="btn function" onclick="handleScientific('tan')">tan</button>
@@ -469,7 +514,7 @@
             <!-- 标准键盘 -->
             <div class="keypad">
                 <div class="keypad-row">
-                    <button class="btn function mode-toggle" onclick="toggleMode()">Sci</button>
+                    <button class="btn function settings-btn" onclick="toggleSound()" id="soundBtn">🔊</button>
                     <button class="btn function" onclick="clearAll()">AC</button>
                     <button class="btn function" onclick="deleteLast()">⌫</button>
                     <button class="btn operator" onclick="handleOperator('/')">÷</button>
@@ -501,27 +546,101 @@
         </div>
     </div>
 
+    <!-- 反馈提示 -->
+    <div class="feedback-toast" id="feedbackToast"></div>
+
     <script>
         // 计算器状态
         let currentOperand = '0';
         let previousOperand = '';
         let operation = null;
         let shouldResetScreen = false;
-        let isScientificMode = false;
         let isDegreeMode = true;
+        let soundEnabled = true;
         let history = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
 
         // DOM 元素
         const currentOperandElement = document.getElementById('currentOperand');
         const previousOperandElement = document.getElementById('previousOperand');
-        const scientificKeypad = document.getElementById('scientificKeypad');
-        const modeIndicator = document.getElementById('modeIndicator');
+        const degRadIndicator = document.getElementById('degRadIndicator');
         const degRadBtn = document.getElementById('degRadBtn');
         const historyPanel = document.getElementById('historyPanel');
         const historyList = document.getElementById('historyList');
+        const soundBtn = document.getElementById('soundBtn');
+        const feedbackToast = document.getElementById('feedbackToast');
 
-        // 初始化显示历史记录
+        // 音频上下文（用于按键音）
+        let audioContext = null;
+
+        // 初始化
         updateHistoryDisplay();
+        initAudio();
+
+        // 初始化音频上下文（需要用户交互后才能使用）
+        function initAudio() {
+            document.addEventListener('click', () => {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }, { once: true });
+        }
+
+        // 播放按键音
+        function playClickSound() {
+            if (!soundEnabled || !audioContext) return;
+
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // 短促的点击音
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.05);
+            } catch (e) {
+                console.log('Audio play failed:', e);
+            }
+        }
+
+        // 震动反馈
+        function vibrate() {
+            if (navigator.vibrate) {
+                navigator.vibrate(10); // 短震动 10ms
+            }
+        }
+
+        // 按键反馈
+        function buttonFeedback() {
+            vibrate();
+            playClickSound();
+        }
+
+        // 显示提示
+        function showToast(message) {
+            feedbackToast.textContent = message;
+            feedbackToast.classList.add('show');
+            setTimeout(() => {
+                feedbackToast.classList.remove('show');
+            }, 1500);
+        }
+
+        // 切换声音
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+            showToast(soundEnabled ? '声音已开启' : '声音已关闭');
+            if (soundEnabled && audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
 
         // 更新显示
         function updateDisplay() {
@@ -540,12 +659,10 @@
             if (isNaN(num)) return number;
             if (num === 0) return '0';
 
-            // 处理极大或极小数
             if (Math.abs(num) > 999999999999 || (Math.abs(num) < 0.000001 && num !== 0)) {
                 return num.toExponential(6);
             }
 
-            // 格式化显示
             let str = num.toString();
             if (str.length > 12) {
                 str = num.toPrecision(12);
@@ -567,6 +684,7 @@
 
         // 追加数字
         function appendNumber(number) {
+            buttonFeedback();
             if (shouldResetScreen) {
                 currentOperand = number === '.' ? '0.' : number;
                 shouldResetScreen = false;
@@ -583,6 +701,7 @@
 
         // 处理运算符
         function handleOperator(op) {
+            buttonFeedback();
             if (currentOperand === '') return;
             if (previousOperand !== '') {
                 calculate();
@@ -592,13 +711,13 @@
             shouldResetScreen = true;
             updateDisplay();
 
-            // 更新按钮激活状态
             document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
         }
 
         // 计算
         function calculate() {
+            buttonFeedback();
             if (operation === null || previousOperand === '' || currentOperand === '') return;
 
             let computation;
@@ -617,7 +736,7 @@
                     break;
                 case '/':
                     if (current === 0) {
-                        alert('不能除以零');
+                        showToast('不能除以零');
                         return;
                     }
                     computation = prev / current;
@@ -629,7 +748,6 @@
                     return;
             }
 
-            // 保存到历史记录
             const expression = `${formatNumber(previousOperand)} ${getOperatorSymbol(operation)} ${formatNumber(currentOperand)}`;
             addToHistory(expression, computation);
 
@@ -639,12 +757,12 @@
             shouldResetScreen = true;
             updateDisplay();
 
-            // 清除运算符按钮激活状态
             document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
         }
 
         // 科学计算
         function handleScientific(func) {
+            buttonFeedback();
             let value = parseFloat(currentOperand);
             let result;
             let expression;
@@ -664,7 +782,7 @@
                     break;
                 case '√':
                     if (value < 0) {
-                        alert('不能对负数开平方');
+                        showToast('不能对负数开平方');
                         return;
                     }
                     expression = `√(${currentOperand})`;
@@ -679,7 +797,7 @@
                     return;
                 case 'ln':
                     if (value <= 0) {
-                        alert('ln 的参数必须大于0');
+                        showToast('ln 的参数必须大于0');
                         return;
                     }
                     expression = `ln(${currentOperand})`;
@@ -687,7 +805,7 @@
                     break;
                 case 'log':
                     if (value <= 0) {
-                        alert('log 的参数必须大于0');
+                        showToast('log 的参数必须大于0');
                         return;
                     }
                     expression = `log(${currentOperand})`;
@@ -695,7 +813,7 @@
                     break;
                 case '1/x':
                     if (value === 0) {
-                        alert('不能除以零');
+                        showToast('不能除以零');
                         return;
                     }
                     expression = `1/(${currentOperand})`;
@@ -703,7 +821,7 @@
                     break;
                 case 'n!':
                     if (value < 0 || !Number.isInteger(value)) {
-                        alert('阶乘只适用于非负整数');
+                        showToast('阶乘只适用于非负整数');
                         return;
                     }
                     expression = `(${currentOperand})!`;
@@ -749,12 +867,18 @@
 
         // 切换角度/弧度
         function toggleDegRad() {
+            buttonFeedback();
             isDegreeMode = !isDegreeMode;
-            degRadBtn.textContent = isDegreeMode ? 'DEG' : 'RAD';
+            const text = isDegreeMode ? 'DEG' : 'RAD';
+            degRadBtn.textContent = text;
+            degRadIndicator.textContent = text;
+            degRadBtn.classList.toggle('active', isDegreeMode);
+            showToast(isDegreeMode ? '角度模式' : '弧度模式');
         }
 
         // 清除所有
         function clearAll() {
+            buttonFeedback();
             currentOperand = '0';
             previousOperand = '';
             operation = null;
@@ -765,6 +889,7 @@
 
         // 删除最后一位
         function deleteLast() {
+            buttonFeedback();
             if (shouldResetScreen) return;
             if (currentOperand.length === 1 || (currentOperand.length === 2 && currentOperand[0] === '-')) {
                 currentOperand = '0';
@@ -774,20 +899,9 @@
             updateDisplay();
         }
 
-        // 切换模式
-        function toggleMode() {
-            isScientificMode = !isScientificMode;
-            if (isScientificMode) {
-                scientificKeypad.classList.add('show');
-                modeIndicator.textContent = '科学';
-            } else {
-                scientificKeypad.classList.remove('show');
-                modeIndicator.textContent = '标准';
-            }
-        }
-
         // 切换历史面板
         function toggleHistory() {
+            buttonFeedback();
             historyPanel.classList.toggle('show');
             if (historyPanel.classList.contains('show')) {
                 updateHistoryDisplay();
@@ -825,6 +939,7 @@
 
         // 清除历史
         function clearHistory() {
+            buttonFeedback();
             if (confirm('确定要清除所有计算历史吗？')) {
                 history = [];
                 localStorage.removeItem('calculatorHistory');
@@ -834,6 +949,7 @@
 
         // 使用历史记录
         function useHistory(index) {
+            buttonFeedback();
             currentOperand = history[index].result.toString();
             shouldResetScreen = true;
             updateDisplay();
@@ -842,15 +958,15 @@
 
         // 键盘支持
         document.addEventListener('keydown', (e) => {
-            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
-            if (e.key === '.') appendNumber('.');
-            if (e.key === '=' || e.key === 'Enter') calculate();
-            if (e.key === 'Backspace') deleteLast();
-            if (e.key === 'Escape') clearAll();
-            if (e.key === '+') handleOperator('+');
-            if (e.key === '-') handleOperator('-');
-            if (e.key === '*') handleOperator('*');
-            if (e.key === '/') handleOperator('/');
+            if (e.key >= '0' && e.key <= '9') { buttonFeedback(); appendNumber(e.key); }
+            else if (e.key === '.') { buttonFeedback(); appendNumber('.'); }
+            else if (e.key === '=' || e.key === 'Enter') { buttonFeedback(); calculate(); }
+            else if (e.key === 'Backspace') { buttonFeedback(); deleteLast(); }
+            else if (e.key === 'Escape') { buttonFeedback(); clearAll(); }
+            else if (e.key === '+') { buttonFeedback(); handleOperator('+'); }
+            else if (e.key === '-') { buttonFeedback(); handleOperator('-'); }
+            else if (e.key === '*') { buttonFeedback(); handleOperator('*'); }
+            else if (e.key === '/') { buttonFeedback(); handleOperator('/'); }
         });
 
         // 防止双击缩放
