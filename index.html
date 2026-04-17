@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>科学计算器</title>
+    <title>科学计算器 · 支持括号与优先级</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         * {
@@ -19,20 +19,21 @@
         html, body {
             height: 100%;
             overflow: hidden;
+            background: #000;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #000;
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: center;
         }
 
+        /* 计算器主容器 — 自适应安全区域 */
         .calculator {
             width: 100%;
+            max-width: 500px;
             height: 100%;
-            max-width: 430px;
             background: #000;
             display: flex;
             flex-direction: column;
@@ -40,17 +41,18 @@
             padding-bottom: env(safe-area-inset-bottom, 0);
         }
 
-        /* 历史记录面板 */
+        /* 历史面板 (侧滑) */
         .history-panel {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.98);
-            z-index: 100;
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(8px);
+            z-index: 200;
             transform: translateX(-100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
             display: flex;
             flex-direction: column;
         }
@@ -63,9 +65,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
-            padding-top: max(15px, env(safe-area-inset-top, 15px));
-            border-bottom: 1px solid #333;
+            padding: 16px 20px;
+            padding-top: max(16px, env(safe-area-inset-top, 16px));
+            border-bottom: 0.5px solid #333;
             flex-shrink: 0;
         }
 
@@ -75,258 +77,259 @@
             font-weight: 600;
         }
 
-        .history-close {
-            color: #ff9500;
+        .history-clear, .history-close {
             font-size: 16px;
             cursor: pointer;
-            padding: 10px;
+            padding: 8px 12px;
+            border-radius: 30px;
+            background: #1c1c1e;
+            color: #ff9500;
         }
 
-        .history-clear {
-            color: #ff3b30;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 10px;
+        .history-clear:active, .history-close:active {
+            opacity: 0.7;
         }
 
         .history-list {
             flex: 1;
             overflow-y: auto;
-            padding: 10px 20px;
+            padding: 16px;
         }
 
         .history-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #222;
+            padding: 14px 0;
+            border-bottom: 0.5px solid #222;
             cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .history-item:active {
+            background: #1c1c1e;
         }
 
         .history-expr {
-            color: #999;
+            color: #aaa;
             font-size: 14px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-family: monospace;
         }
 
         .history-result {
             color: #fff;
-            font-size: 24px;
-            font-weight: 300;
+            font-size: 22px;
+            font-weight: 350;
+            word-break: break-word;
         }
 
         .empty-history {
-            color: #666;
+            color: #555;
             text-align: center;
             padding: 40px;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         /* 显示区域 */
         .display {
             flex: 0 0 auto;
-            min-height: 120px;
-            max-height: 22vh;
+            min-height: 140px;
+            padding: 20px 20px 10px 20px;
+            padding-top: max(20px, env(safe-area-inset-top, 20px));
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            align-items: flex-end;
-            padding: 15px;
-            padding-top: max(10px, env(safe-area-inset-top, 10px));
-            position: relative;
         }
 
         .display-header {
-            position: absolute;
-            top: max(10px, env(safe-area-inset-top, 10px));
-            left: 15px;
-            right: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            margin-bottom: 12px;
         }
 
         .mode-indicator {
             color: #ff9500;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
-            letter-spacing: 1px;
+            background: #1c1c1e;
+            padding: 4px 12px;
+            border-radius: 30px;
         }
 
         .history-btn {
+            background: #1c1c1e;
+            border-radius: 30px;
+            padding: 6px 12px;
             color: #ff9500;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
-            padding: 6px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .previous-operand {
-            color: #999;
+        .expression-area {
+            text-align: right;
+            color: #aaa;
             font-size: 20px;
-            font-weight: 300;
-            min-height: 24px;
+            min-height: 32px;
             word-break: break-all;
-            max-width: 100%;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .current-area {
             text-align: right;
-            margin-bottom: 5px;
-            margin-top: 40px;
-        }
-
-        .current-operand {
             color: #fff;
-            font-size: clamp(32px, 10vw, 56px);
-            font-weight: 200;
-            word-break: break-all;
-            max-width: 100%;
-            line-height: 1.1;
-            text-align: right;
+            font-size: clamp(36px, 12vw, 64px);
+            font-weight: 350;
+            word-break: break-word;
+            line-height: 1.2;
         }
 
-        /* 键盘容器 */
-        .keypad-container {
-            flex: 0 0 auto;
-            padding: 8px;
-            padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
-            max-height: 78vh;
-            display: flex;
-            flex-direction: column;
+        /* 键盘滚动容器 (解决底部遮挡) */
+        .keyboard-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 8px 0 8px;
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* 科学计算键盘 */
-        .scientific-keypad {
-            flex: 0 0 auto;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #222;
-            margin-bottom: 6px;
+        .keyboard-inner {
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px));
         }
 
-        .scientific-keypad .keypad-row {
-            margin-bottom: 6px;
-            height: auto;
+        /* 科学按键区域 */
+        .scientific-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        .scientific-keypad .btn {
-            width: 18%;
-            height: auto;
-            aspect-ratio: 1.3;
-            font-size: clamp(13px, 3.5vw, 16px);
+        /* 主键盘区域 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
         }
 
-        .scientific-keypad .btn.function {
-            background: #2c2c2c;
-            color: #fff;
-        }
-
-        .scientific-keypad .btn.function:active {
-            background: #444;
-        }
-
-        .btn.deg-rad {
-            font-size: clamp(11px, 3vw, 13px) !important;
-            font-weight: 600;
-        }
-
-        .btn.deg-rad.active {
-            background: #ff9500 !important;
-            color: #fff !important;
-        }
-
-        /* 标准键盘 */
-        .keypad {
-            flex: 0 0 auto;
-            width: 100%;
-        }
-
-        .keypad-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            height: auto;
-        }
-
-        .keypad-row:last-child {
-            margin-bottom: 0;
-        }
-
+        /* 通用按钮样式 */
         .btn {
-            width: 23%;
-            aspect-ratio: 1;
-            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            border-radius: 60px;
             border: none;
-            font-size: clamp(20px, 5.5vw, 26px);
-            font-weight: 400;
-            cursor: pointer;
-            transition: all 0.05s ease;
+            font-size: 1.7rem;
+            font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.05s, filter 0.05s;
+            background: #2c2c2e;
+            color: white;
+            font-family: inherit;
         }
 
         .btn:active {
-            transform: scale(0.92);
-            filter: brightness(1.3);
+            transform: scale(0.94);
+            filter: brightness(1.2);
         }
 
-        .btn.function {
-            background: #a5a5a5;
+        /* 功能按钮灰色 */
+        .btn-func {
+            background: #3a3a3c;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        /* 运算符橙色 */
+        .btn-operator {
+            background: #ff9500;
+            color: #fff;
+            font-size: 1.9rem;
+        }
+
+        /* 等号 */
+        .btn-equal {
+            background: #ff9500;
+        }
+
+        /* 数字 */
+        .btn-number {
+            background: #2c2c2e;
+            font-size: 1.8rem;
+        }
+
+        /* 零特殊 */
+        .btn-zero {
+            grid-column: span 2;
+            aspect-ratio: 2 / 1;
+            justify-content: flex-start;
+            padding-left: 28px;
+        }
+
+        /* 科学模式小按钮微调 */
+        .sci-btn {
+            font-size: 0.9rem;
+            font-weight: 500;
+            background: #3a3a3c;
+        }
+
+        .deg-rad-btn {
+            background: #1c1c1e;
+            color: #ff9500;
+            font-weight: 600;
+        }
+
+        .deg-rad-btn.active {
+            background: #ff9500;
             color: #000;
         }
 
-        .btn.function:active {
-            background: #d4d4d2;
+        /* 横屏 & 小高度优化 */
+        @media (max-height: 600px) {
+            .display {
+                min-height: 100px;
+                padding: 8px 16px;
+            }
+            .current-area {
+                font-size: clamp(28px, 8vw, 48px);
+            }
+            .expression-area {
+                font-size: 16px;
+            }
+            .btn {
+                font-size: 1.3rem;
+            }
+            .sci-btn {
+                font-size: 0.75rem;
+            }
+            .btn-func {
+                font-size: 1rem;
+            }
         }
 
-        .btn.operator {
-            background: #ff9500;
-            color: #fff;
-            font-size: clamp(24px, 6.5vw, 30px);
+        @media (orientation: landscape) and (max-height: 480px) {
+            .calculator {
+                flex-direction: row;
+            }
+            .display {
+                flex: 0 0 35%;
+                justify-content: center;
+            }
+            .keyboard-scroll {
+                flex: 1;
+            }
+            .scientific-grid {
+                gap: 6px;
+            }
+            .main-grid {
+                gap: 6px;
+            }
+            .btn {
+                aspect-ratio: 1.2;
+            }
         }
 
-        .btn.operator:active {
-            background: #ffb143;
-        }
-
-        .btn.operator.active {
-            background: #fff;
-            color: #ff9500;
-        }
-
-        .btn.number {
-            background: #333;
-            color: #fff;
-        }
-
-        .btn.number:active {
-            background: #555;
-        }
-
-        .btn.zero {
-            width: 48%;
-            aspect-ratio: auto;
-            border-radius: 50px;
-            justify-content: flex-start;
-            padding-left: 24px;
-        }
-
-        /* 设置按钮 */
-        .btn.settings-btn {
-            background: #1c1c1c;
-            color: #666;
-            font-size: 18px;
-        }
-
-        .btn.settings-btn:active {
-            background: #333;
-        }
-
-        /* 震动反馈提示 */
+        /* 反馈toast */
         .feedback-toast {
             position: fixed;
             bottom: 100px;
@@ -334,690 +337,581 @@
             transform: translateX(-50%) translateY(100px);
             background: rgba(255, 255, 255, 0.9);
             color: #000;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 8px 20px;
+            border-radius: 40px;
             font-size: 14px;
             opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 200;
+            transition: all 0.2s;
+            z-index: 300;
             pointer-events: none;
+            white-space: nowrap;
         }
-
         .feedback-toast.show {
             transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
-
-        /* 滚动条样式 */
-        .history-list::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .history-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .history-list::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 2px;
-        }
-
-        /* 小屏幕优化 */
-        @media (max-height: 700px) {
-            .display {
-                min-height: 100px;
-                max-height: 20vh;
-                padding: 10px 12px;
-            }
-
-            .previous-operand {
-                font-size: 16px;
-                margin-top: 35px;
-            }
-
-            .current-operand {
-                font-size: clamp(26px, 8vw, 44px);
-            }
-
-            .keypad-container {
-                padding: 6px;
-                max-height: 80vh;
-            }
-
-            .keypad-row {
-                margin-bottom: 5px;
-            }
-
-            .scientific-keypad .keypad-row {
-                margin-bottom: 5px;
-            }
-
-            .btn {
-                font-size: clamp(17px, 4.5vw, 22px);
-            }
-
-            .scientific-keypad .btn {
-                font-size: clamp(11px, 2.8vw, 13px);
-                aspect-ratio: 1.2;
-            }
-        }
-
-        @media (max-height: 600px) {
-            .display {
-                min-height: 80px;
-                max-height: 18vh;
-            }
-
-            .current-operand {
-                font-size: clamp(22px, 7vw, 36px);
-            }
-
-            .scientific-keypad .btn {
-                aspect-ratio: 1.1;
-            }
-        }
-
-        /* 横屏适配 */
-        @media (orientation: landscape) and (max-height: 500px) {
-            .calculator {
-                flex-direction: row;
-            }
-
-            .display {
-                flex: 0 0 32%;
-                min-height: auto;
-                max-height: none;
-                padding: 10px;
-            }
-
-            .keypad-container {
-                flex: 1;
-                max-height: none;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                padding: 8px;
-            }
-
-            .current-operand {
-                font-size: clamp(18px, 5vh, 32px);
-            }
-
-            .previous-operand {
-                font-size: 13px;
-                margin-top: 30px;
-            }
-
-            .scientific-keypad .btn {
-                aspect-ratio: 1.5;
-                font-size: clamp(11px, 2.5vh, 14px);
-            }
-
-            .btn {
-                font-size: clamp(16px, 4vh, 22px);
-            }
-        }
     </style>
-<base target="_blank">
 </head>
 <body>
-    <div class="calculator">
-        <!-- 历史记录面板 -->
-        <div class="history-panel" id="historyPanel">
-            <div class="history-header">
-                <span class="history-clear" onclick="clearHistory()">清除全部</span>
-                <span class="history-title">计算历史</span>
-                <span class="history-close" onclick="toggleHistory()">完成</span>
-            </div>
-            <div class="history-list" id="historyList">
-                <div class="empty-history">暂无计算历史</div>
-            </div>
+<div class="calculator">
+    <!-- 历史侧边栏 -->
+    <div class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <span class="history-clear" id="clearHistoryBtn">清除全部</span>
+            <span class="history-title">记录</span>
+            <span class="history-close" id="closeHistoryBtn">完成</span>
         </div>
-
-        <!-- 显示区域 -->
-        <div class="display">
-            <div class="display-header">
-                <span class="mode-indicator" id="degRadIndicator">DEG</span>
-                <span class="history-btn" onclick="toggleHistory()">🕐</span>
-            </div>
-            <div class="previous-operand" id="previousOperand"></div>
-            <div class="current-operand" id="currentOperand">0</div>
-        </div>
-
-        <!-- 键盘容器 -->
-        <div class="keypad-container">
-            <!-- 科学计算键盘 -->
-            <div class="scientific-keypad" id="scientificKeypad">
-                <div class="keypad-row">
-                    <button class="btn function deg-rad active" onclick="toggleDegRad()" id="degRadBtn">DEG</button>
-                    <button class="btn function" onclick="handleScientific('sin')">sin</button>
-                    <button class="btn function" onclick="handleScientific('cos')">cos</button>
-                    <button class="btn function" onclick="handleScientific('tan')">tan</button>
-                    <button class="btn function" onclick="handleScientific('π')">π</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn function" onclick="handleScientific('x²')">x²</button>
-                    <button class="btn function" onclick="handleScientific('xⁿ')">xⁿ</button>
-                    <button class="btn function" onclick="handleScientific('√')">√</button>
-                    <button class="btn function" onclick="handleScientific('ln')">ln</button>
-                    <button class="btn function" onclick="handleScientific('log')">log</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn function" onclick="handleBracket('(')">(</button>
-                    <button class="btn function" onclick="handleBracket(')')">)</button>
-                    <button class="btn function" onclick="handleScientific('1/x')">1/x</button>
-                    <button class="btn function" onclick="handleScientific('e')">e</button>
-                    <button class="btn function" onclick="handleScientific('n!')">n!</button>
-                </div>
-            </div>
-
-            <!-- 标准键盘 -->
-            <div class="keypad">
-                <div class="keypad-row">
-                    <button class="btn function settings-btn" onclick="toggleSound()" id="soundBtn">🔊</button>
-                    <button class="btn function" onclick="clearAll()">AC</button>
-                    <button class="btn function" onclick="deleteLast()">⌫</button>
-                    <button class="btn operator" onclick="handleOperator('/')">÷</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn number" onclick="appendNumber('7')">7</button>
-                    <button class="btn number" onclick="appendNumber('8')">8</button>
-                    <button class="btn number" onclick="appendNumber('9')">9</button>
-                    <button class="btn operator" onclick="handleOperator('*')">×</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn number" onclick="appendNumber('4')">4</button>
-                    <button class="btn number" onclick="appendNumber('5')">5</button>
-                    <button class="btn number" onclick="appendNumber('6')">6</button>
-                    <button class="btn operator" onclick="handleOperator('-')">−</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn number" onclick="appendNumber('1')">1</button>
-                    <button class="btn number" onclick="appendNumber('2')">2</button>
-                    <button class="btn number" onclick="appendNumber('3')">3</button>
-                    <button class="btn operator" onclick="handleOperator('+')">+</button>
-                </div>
-                <div class="keypad-row">
-                    <button class="btn number zero" onclick="appendNumber('0')">0</button>
-                    <button class="btn number" onclick="appendNumber('.')">.</button>
-                    <button class="btn operator" onclick="calculate()">=</button>
-                </div>
-            </div>
+        <div class="history-list" id="historyList">
+            <div class="empty-history">暂无计算历史</div>
         </div>
     </div>
 
-    <!-- 反馈提示 -->
-    <div class="feedback-toast" id="feedbackToast"></div>
+    <!-- 显示区域 -->
+    <div class="display">
+        <div class="display-header">
+            <span class="mode-indicator" id="degRadLabel">DEG</span>
+            <span class="history-btn" id="openHistoryBtn">📋 历史</span>
+        </div>
+        <div class="expression-area" id="expressionDisplay"></div>
+        <div class="current-area" id="currentDisplay">0</div>
+    </div>
 
-    <script>
-        // 计算器状态
-        let currentOperand = '0';
-        let previousOperand = '';
-        let operation = null;
-        let shouldResetScreen = false;
-        let isDegreeMode = true;
-        let soundEnabled = true;
-        let history = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
+    <!-- 可滚动键盘区 -->
+    <div class="keyboard-scroll">
+        <div class="keyboard-inner">
+            <!-- 科学函数面板 -->
+            <div class="scientific-grid" id="scientificGrid">
+                <button class="btn sci-btn deg-rad-btn" id="degRadToggle">DEG</button>
+                <button class="btn sci-btn" data-func="sin">sin</button>
+                <button class="btn sci-btn" data-func="cos">cos</button>
+                <button class="btn sci-btn" data-func="tan">tan</button>
+                <button class="btn sci-btn" data-func="π">π</button>
 
-        // DOM 元素
-        const currentOperandElement = document.getElementById('currentOperand');
-        const previousOperandElement = document.getElementById('previousOperand');
-        const degRadIndicator = document.getElementById('degRadIndicator');
-        const degRadBtn = document.getElementById('degRadBtn');
-        const historyPanel = document.getElementById('historyPanel');
-        const historyList = document.getElementById('historyList');
-        const soundBtn = document.getElementById('soundBtn');
-        const feedbackToast = document.getElementById('feedbackToast');
+                <button class="btn sci-btn" data-func="x²">x²</button>
+                <button class="btn sci-btn" data-func="xⁿ">xⁿ</button>
+                <button class="btn sci-btn" data-func="√">√</button>
+                <button class="btn sci-btn" data-func="ln">ln</button>
+                <button class="btn sci-btn" data-func="log">log</button>
 
-        // 音频上下文
-        let audioContext = null;
+                <button class="btn sci-btn" data-func="(">(</button>
+                <button class="btn sci-btn" data-func=")">)</button>
+                <button class="btn sci-btn" data-func="1/x">1/x</button>
+                <button class="btn sci-btn" data-func="e">e</button>
+                <button class="btn sci-btn" data-func="n!">n!</button>
+            </div>
 
-        // 初始化
-        updateHistoryDisplay();
-        initAudio();
+            <!-- 主键盘 -->
+            <div class="main-grid">
+                <button class="btn btn-func" id="soundToggleBtn">🔊</button>
+                <button class="btn btn-func" id="clearAllBtn">AC</button>
+                <button class="btn btn-func" id="deleteBtn">⌫</button>
+                <button class="btn btn-operator" data-op="÷">÷</button>
 
-        // 初始化音频上下文
-        function initAudio() {
-            document.addEventListener('click', () => {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }, { once: true });
-        }
+                <button class="btn btn-number" data-num="7">7</button>
+                <button class="btn btn-number" data-num="8">8</button>
+                <button class="btn btn-number" data-num="9">9</button>
+                <button class="btn btn-operator" data-op="×">×</button>
 
-        // 播放按键音
-        function playClickSound() {
-            if (!soundEnabled || !audioContext) return;
+                <button class="btn btn-number" data-num="4">4</button>
+                <button class="btn btn-number" data-num="5">5</button>
+                <button class="btn btn-number" data-num="6">6</button>
+                <button class="btn btn-operator" data-op="-">−</button>
 
+                <button class="btn btn-number" data-num="1">1</button>
+                <button class="btn btn-number" data-num="2">2</button>
+                <button class="btn btn-number" data-num="3">3</button>
+                <button class="btn btn-operator" data-op="+">+</button>
+
+                <button class="btn btn-number btn-zero" data-num="0">0</button>
+                <button class="btn btn-number" data-num=".">.</button>
+                <button class="btn btn-equal" id="equalBtn">=</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="feedback-toast" id="toastMsg"></div>
+
+<script>
+    // ------------------- 全局状态 -------------------
+    let expression = "";          // 当前完整表达式字符串
+    let lastResult = null;        // 上一次计算结果（用于连续运算）
+    let isDegreeMode = true;      // true: DEG, false: RAD
+    let soundEnabled = true;
+    let historyList = [];
+
+    // DOM 元素
+    const expressionDisplay = document.getElementById("expressionDisplay");
+    const currentDisplay = document.getElementById("currentDisplay");
+    const degRadLabel = document.getElementById("degRadLabel");
+    const degRadToggle = document.getElementById("degRadToggle");
+    const soundToggleBtn = document.getElementById("soundToggleBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const equalBtn = document.getElementById("equalBtn");
+    const historyPanel = document.getElementById("historyPanel");
+    const historyListDiv = document.getElementById("historyList");
+    const openHistoryBtn = document.getElementById("openHistoryBtn");
+    const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const toastMsg = document.getElementById("toastMsg");
+
+    // 音频上下文 (修复PWA无声)
+    let audioCtx = null;
+
+    // ------------------- 辅助函数 -------------------
+    function showToast(text, duration = 1200) {
+        toastMsg.textContent = text;
+        toastMsg.classList.add("show");
+        setTimeout(() => toastMsg.classList.remove("show"), duration);
+    }
+
+    // 震动反馈
+    function vibrate() {
+        if (navigator.vibrate) navigator.vibrate(8);
+    }
+
+    // 点击音效 (每次用户点击按钮时调用)
+    async function playClickSound() {
+        if (!soundEnabled) return;
+        try {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // 关键：如果处于 suspended 状态，必须唤醒
+            if (audioCtx.state === "suspended") {
+                await audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = 820;
+            osc.type = "sine";
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.06);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.06);
+        } catch(e) { /* 静默失败 */ }
+    }
+
+    function buttonFeedback() {
+        vibrate();
+        playClickSound();
+    }
+
+    // 保存历史到 localStorage
+    function saveHistory() {
+        localStorage.setItem("calc_history_v2", JSON.stringify(historyList.slice(0, 50)));
+    }
+
+    function loadHistory() {
+        const stored = localStorage.getItem("calc_history_v2");
+        if (stored) {
             try {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                oscillator.frequency.value = 800;
-                oscillator.type = 'sine';
-
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
-
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.05);
-            } catch (e) {
-                console.log('Audio play failed:', e);
-            }
+                historyList = JSON.parse(stored);
+            } catch(e) { historyList = []; }
+        } else {
+            historyList = [];
         }
+        renderHistoryPanel();
+    }
 
-        // 震动反馈
-        function vibrate() {
-            if (navigator.vibrate) {
-                navigator.vibrate(10);
-            }
+    function addHistory(expr, resultVal) {
+        const resultStr = typeof resultVal === 'number' ? formatNumber(resultVal) : String(resultVal);
+        historyList.unshift({
+            expr: expr,
+            result: resultStr,
+            time: Date.now()
+        });
+        if (historyList.length > 50) historyList.pop();
+        saveHistory();
+        renderHistoryPanel();
+    }
+
+    function renderHistoryPanel() {
+        if (!historyListDiv) return;
+        if (historyList.length === 0) {
+            historyListDiv.innerHTML = '<div class="empty-history">暂无计算历史</div>';
+            return;
         }
+        historyListDiv.innerHTML = historyList.map((item, idx) => `
+            <div class="history-item" data-idx="${idx}">
+                <div class="history-expr">${escapeHtml(item.expr)} =</div>
+                <div class="history-result">${escapeHtml(item.result)}</div>
+            </div>
+        `).join('');
+        // 绑定点击复用历史结果
+        document.querySelectorAll('.history-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const idx = parseInt(el.dataset.idx);
+                if (!isNaN(idx) && historyList[idx]) {
+                    buttonFeedback();
+                    const pastResult = historyList[idx].result;
+                    // 将结果放入当前显示，并清空表达式区域，便于继续计算
+                    expression = "";
+                    updateExpressionDisplay();
+                    setCurrentDisplay(pastResult);
+                    lastResult = parseFloat(pastResult);
+                    if (isNaN(lastResult)) lastResult = null;
+                    closeHistoryPanel();
+                }
+                e.stopPropagation();
+            });
+        });
+    }
 
-        // 按键反馈
-        function buttonFeedback() {
-            vibrate();
-            playClickSound();
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function openHistoryPanel() {
+        historyPanel.classList.add("show");
+        renderHistoryPanel();
+    }
+    function closeHistoryPanel() {
+        historyPanel.classList.remove("show");
+    }
+    function clearHistory() {
+        if (historyList.length > 0) {
+            historyList = [];
+            saveHistory();
+            renderHistoryPanel();
+            showToast("历史已清空");
+        } else {
+            showToast("暂无历史");
         }
+    }
 
-        // 显示提示
-        function showToast(message) {
-            feedbackToast.textContent = message;
-            feedbackToast.classList.add('show');
-            setTimeout(() => {
-                feedbackToast.classList.remove('show');
-            }, 1500);
+    // 更新表达式显示区
+    function updateExpressionDisplay() {
+        if (expression === "") {
+            expressionDisplay.textContent = "";
+        } else {
+            let disp = expression.replace(/\*/g, '×').replace(/\//g, '÷');
+            expressionDisplay.textContent = disp;
         }
+    }
 
-        // 切换声音
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
-            showToast(soundEnabled ? '声音已开启' : '声音已关闭');
-            if (soundEnabled && audioContext && audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-        }
-
-        // 更新显示
-        function updateDisplay() {
-            currentOperandElement.textContent = formatNumber(currentOperand);
-            if (operation != null) {
-                previousOperandElement.textContent = `${formatNumber(previousOperand)} ${getOperatorSymbol(operation)}`;
+    // 设置当前显示 (底部大数字)
+    function setCurrentDisplay(value) {
+        if (value === undefined || value === null) value = "0";
+        let str = String(value);
+        // 美化数字格式
+        let num = parseFloat(str);
+        if (!isNaN(num) && isFinite(num)) {
+            if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
+                str = num.toExponential(10);
             } else {
-                previousOperandElement.textContent = previousOperand;
+                str = num.toLocaleString('en-US', { maximumFractionDigits: 12 });
+                str = str.replace(/,/g, '');
             }
         }
+        currentDisplay.textContent = str;
+    }
 
-        // 格式化数字显示
-        function formatNumber(number) {
-            if (number === '') return '';
-            if (number === '(' || number === ')') return number;
+    // 获取当前显示值 (用于运算)
+    function getCurrentDisplayValue() {
+        let raw = currentDisplay.textContent;
+        if (raw === "Error") return NaN;
+        let num = parseFloat(raw);
+        return isNaN(num) ? 0 : num;
+    }
 
-            // 如果包含括号，直接返回
-            if (number.includes('(') || number.includes(')')) {
-                return number;
-            }
-
-            const num = parseFloat(number);
-            if (isNaN(num)) return number;
-            if (num === 0) return '0';
-
-            if (Math.abs(num) > 999999999999 || (Math.abs(num) < 0.000001 && num !== 0)) {
-                return num.toExponential(6);
-            }
-
-            let str = num.toString();
-            if (str.length > 12) {
-                str = num.toPrecision(12);
-            }
-            return str;
+    // 计算表达式 (支持四则运算、括号、幂、科学函数)
+    function evaluateExpression(expr, degreeMode) {
+        // 预处理: 替换符号, 将 × ÷ 转换为 * / , 将 ^ 转换为 **
+        let processed = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
+        // 处理 π 和 e
+        processed = processed.replace(/π/g, 'Math.PI').replace(/e(?![a-zA-Z0-9_])/g, 'Math.E');
+        // 处理科学函数: sin, cos, tan, ln, log, sqrt 等
+        // 需要将角度模式下的 sin/cos/tan 进行弧度转换
+        if (degreeMode) {
+            // 替换 sin( → sin_deg( , 自定义函数处理
+            processed = processed.replace(/sin\(/g, 'sin_deg(');
+            processed = processed.replace(/cos\(/g, 'cos_deg(');
+            processed = processed.replace(/tan\(/g, 'tan_deg(');
         }
-
-        // 获取运算符符号
-        function getOperatorSymbol(op) {
-            switch(op) {
-                case '+': return '+';
-                case '-': return '−';
-                case '*': return '×';
-                case '/': return '÷';
-                case '^': return '^';
-                default: return op;
-            }
-        }
-
-        // 追加数字
-        function appendNumber(number) {
-            buttonFeedback();
-            if (shouldResetScreen) {
-                currentOperand = number === '.' ? '0.' : number;
-                shouldResetScreen = false;
-            } else {
-                if (number === '.' && currentOperand.includes('.')) {
-                    // 检查最后一个数字是否已经有小数点
-                    const parts = currentOperand.split(/[\+\-\*\/\^\(\)]/);
-                    const lastPart = parts[parts.length - 1];
-                    if (lastPart.includes('.')) return;
-                }
-                if (currentOperand === '0' && number !== '.') {
-                    currentOperand = number;
-                } else {
-                    currentOperand += number;
-                }
-            }
-            updateDisplay();
-        }
-
-        // 处理括号 - 独立的函数
-        function handleBracket(bracket) {
-            buttonFeedback();
-
-            if (bracket === '(') {
-                if (currentOperand === '0') {
-                    currentOperand = '(';
-                } else {
-                    // 检查是否需要在前面加乘号
-                    const lastChar = currentOperand.slice(-1);
-                    if (lastChar >= '0' && lastChar <= '9' || lastChar === ')') {
-                        currentOperand += '*(';
-                    } else {
-                        currentOperand += '(';
-                    }
-                }
-            } else if (bracket === ')') {
-                // 检查是否有未闭合的左括号
-                const openCount = (currentOperand.match(/\(/g) || []).length;
-                const closeCount = (currentOperand.match(/\)/g) || []).length;
-
-                if (openCount > closeCount) {
-                    currentOperand += ')';
-                }
-            }
-
-            updateDisplay();
-        }
-
-        // 处理运算符
-        function handleOperator(op) {
-            buttonFeedback();
-            if (currentOperand === '') return;
-
-            // 检查最后是否是运算符，如果是则替换
-            const lastChar = currentOperand.slice(-1);
-            if (['+', '-', '*', '/', '^'].includes(lastChar)) {
-                currentOperand = currentOperand.slice(0, -1) + op;
-            } else {
-                currentOperand += op;
-            }
-
-            operation = op;
-            shouldResetScreen = false;
-            updateDisplay();
-
-            document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
-        // 计算
-        function calculate() {
-            buttonFeedback();
-            if (currentOperand === '' || currentOperand === '0') return;
-
-            try {
-                // 替换显示符号为 JavaScript 运算符
-                let expr = currentOperand
-                    .replace(/×/g, '*')
-                    .replace(/÷/g, '/')
-                    .replace(/−/g, '-')
-                    .replace(/\^/g, '**');
-
-                // 补全未闭合的括号
-                const openCount = (expr.match(/\(/g) || []).length;
-                const closeCount = (expr.match(/\)/g) || []).length;
-                if (openCount > closeCount) {
-                    expr += ')'.repeat(openCount - closeCount);
-                }
-
-                // 安全计算
-                const result = Function('"use strict"; return (' + expr + ')')();
-
-                if (!isFinite(result)) {
-                    showToast('计算错误');
-                    return;
-                }
-
-                addToHistory(currentOperand, result);
-                currentOperand = result.toString();
-                operation = null;
-                previousOperand = '';
-                shouldResetScreen = true;
-                updateDisplay();
-
-                document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
-            } catch (e) {
-                showToast('表达式错误');
-                console.error(e);
-            }
-        }
-
-        // 科学计算
-        function handleScientific(func) {
-            buttonFeedback();
-
-            let value = parseFloat(currentOperand);
-            let result;
-            let expression;
-
-            switch(func) {
-                case 'sin':
-                    expression = `sin(${currentOperand})`;
-                    result = isDegreeMode ? Math.sin(value * Math.PI / 180) : Math.sin(value);
-                    break;
-                case 'cos':
-                    expression = `cos(${currentOperand})`;
-                    result = isDegreeMode ? Math.cos(value * Math.PI / 180) : Math.cos(value);
-                    break;
-                case 'tan':
-                    expression = `tan(${currentOperand})`;
-                    result = isDegreeMode ? Math.tan(value * Math.PI / 180) : Math.tan(value);
-                    break;
-                case '√':
-                    if (isNaN(value) || value < 0) {
-                        showToast('不能对负数开平方');
-                        return;
-                    }
-                    expression = `√(${currentOperand})`;
-                    result = Math.sqrt(value);
-                    break;
-                case 'x²':
-                    if (isNaN(value)) {
-                        showToast('无效输入');
-                        return;
-                    }
-                    expression = `(${currentOperand})²`;
-                    result = Math.pow(value, 2);
-                    break;
-                case 'xⁿ':
-                    handleOperator('^');
-                    return;
-                case 'ln':
-                    if (isNaN(value) || value <= 0) {
-                        showToast('ln 的参数必须大于0');
-                        return;
-                    }
-                    expression = `ln(${currentOperand})`;
-                    result = Math.log(value);
-                    break;
-                case 'log':
-                    if (isNaN(value) || value <= 0) {
-                        showToast('log 的参数必须大于0');
-                        return;
-                    }
-                    expression = `log(${currentOperand})`;
-                    result = Math.log10(value);
-                    break;
-                case '1/x':
-                    if (isNaN(value) || value === 0) {
-                        showToast('不能除以零');
-                        return;
-                    }
-                    expression = `1/(${currentOperand})`;
-                    result = 1 / value;
-                    break;
-                case 'n!':
-                    if (isNaN(value) || value < 0 || !Number.isInteger(value)) {
-                        showToast('阶乘只适用于非负整数');
-                        return;
-                    }
-                    expression = `(${currentOperand})!`;
-                    result = factorial(value);
-                    break;
-                case 'π':
-                    result = Math.PI;
-                    expression = 'π';
-                    break;
-                case 'e':
-                    result = Math.E;
-                    expression = 'e';
-                    break;
-                default:
-                    return;
-            }
-
-            addToHistory(expression, result);
-            currentOperand = result.toString();
-            shouldResetScreen = true;
-            updateDisplay();
-        }
-
-        // 阶乘计算
-        function factorial(n) {
-            if (n === 0 || n === 1) return 1;
-            let result = 1;
-            for (let i = 2; i <= n; i++) {
-                result *= i;
-            }
-            return result;
-        }
-
-        // 切换角度/弧度
-        function toggleDegRad() {
-            buttonFeedback();
-            isDegreeMode = !isDegreeMode;
-            const text = isDegreeMode ? 'DEG' : 'RAD';
-            degRadBtn.textContent = text;
-            degRadIndicator.textContent = text;
-            degRadBtn.classList.toggle('active', isDegreeMode);
-            showToast(isDegreeMode ? '角度模式' : '弧度模式');
-        }
-
-        // 清除所有
-        function clearAll() {
-            buttonFeedback();
-            currentOperand = '0';
-            previousOperand = '';
-            operation = null;
-            shouldResetScreen = false;
-            document.querySelectorAll('.btn.operator').forEach(btn => btn.classList.remove('active'));
-            updateDisplay();
-        }
-
-        // 删除最后一位
-        function deleteLast() {
-            buttonFeedback();
-            if (shouldResetScreen) return;
-            if (currentOperand.length === 1 || (currentOperand.length === 2 && currentOperand[0] === '-')) {
-                currentOperand = '0';
-            } else {
-                currentOperand = currentOperand.slice(0, -1);
-            }
-            updateDisplay();
-        }
-
-        // 切换历史面板
-        function toggleHistory() {
-            buttonFeedback();
-            historyPanel.classList.toggle('show');
-            if (historyPanel.classList.contains('show')) {
-                updateHistoryDisplay();
-            }
-        }
-
-        // 添加到历史记录
-        function addToHistory(expression, result) {
-            const item = {
-                expression: expression,
-                result: result,
-                timestamp: new Date().toISOString()
-            };
-            history.unshift(item);
-            if (history.length > 50) {
-                history = history.slice(0, 50);
-            }
-            localStorage.setItem('calculatorHistory', JSON.stringify(history));
-        }
-
-        // 更新历史显示
-        function updateHistoryDisplay() {
-            if (history.length === 0) {
-                historyList.innerHTML = '<div class="empty-history">暂无计算历史</div>';
-                return;
-            }
-
-            historyList.innerHTML = history.map((item, index) => `
-                <div class="history-item" onclick="useHistory(${index})">
-                    <div class="history-expr">${item.expression} =</div>
-                    <div class="history-result">${formatNumber(item.result.toString())}</div>
-                </div>
-            `).join('');
-        }
-
-        // 清除历史
-        function clearHistory() {
-            buttonFeedback();
-            if (confirm('确定要清除所有计算历史吗？')) {
-                history = [];
-                localStorage.removeItem('calculatorHistory');
-                updateHistoryDisplay();
-            }
-        }
-
-        // 使用历史记录
-        function useHistory(index) {
-            buttonFeedback();
-            currentOperand = history[index].result.toString();
-            shouldResetScreen = true;
-            updateDisplay();
-            toggleHistory();
-        }
-
-        // 键盘支持
-        document.addEventListener('keydown', (e) => {
-            if (e.key >= '0' && e.key <= '9') { buttonFeedback(); appendNumber(e.key); }
-            else if (e.key === '.') { buttonFeedback(); appendNumber('.'); }
-            else if (e.key === '=' || e.key === 'Enter') { buttonFeedback(); calculate(); }
-            else if (e.key === 'Backspace') { buttonFeedback(); deleteLast(); }
-            else if (e.key === 'Escape') { buttonFeedback(); clearAll(); }
-            else if (e.key === '+') { buttonFeedback(); handleOperator('+'); }
-            else if (e.key === '-') { buttonFeedback(); handleOperator('-'); }
-            else if (e.key === '*') { buttonFeedback(); handleOperator('*'); }
-            else if (e.key === '/') { buttonFeedback(); handleOperator('/'); }
-            else if (e.key === '(') { buttonFeedback(); handleBracket('('); }
-            else if (e.key === ')') { buttonFeedback(); handleBracket(')'); }
-            else if (e.key === '^') { buttonFeedback(); handleOperator('^'); }
+        // 其他函数映射
+        processed = processed.replace(/ln\(/g, 'Math.log(');
+        processed = processed.replace(/log\(/g, 'Math.log10(');
+        processed = processed.replace(/√\(/g, 'Math.sqrt(');
+        // 处理 x² (平方) 注意可能后面跟数字，转化成平方
+        processed = processed.replace(/(\d+(?:\.\d+)?|\))\s*x²/g, '($1)**2');
+        processed = processed.replace(/x²/g, '**2');
+        // 处理 1/x
+        processed = processed.replace(/1\/x\(/g, '1/(');
+        // 处理 n! 阶乘
+        processed = processed.replace(/(\d+(?:\.\d+)?)!|\(([^)]+)\)!/g, (match, p1, p2) => {
+            let num = p1 !== undefined ? parseFloat(p1) : eval(`(${p2})`);
+            return factorial(num);
         });
 
-        // 防止双击缩放
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
+        // 定义角度转弧度辅助函数
+        const toRad = (deg) => deg * Math.PI / 180;
+        const sin_deg = (x) => Math.sin(toRad(x));
+        const cos_deg = (x) => Math.cos(toRad(x));
+        const tan_deg = (x) => Math.tan(toRad(x));
+
+        try {
+            // 使用 Function 构造器，安全且支持严格模式
+            const fn = new Function('Math', 'sin_deg', 'cos_deg', 'tan_deg', 'factorial', `'use strict'; return (${processed})`);
+            let result = fn(Math, sin_deg, cos_deg, tan_deg, factorial);
+            if (!isFinite(result)) throw new Error("无效结果");
+            return result;
+        } catch (err) {
+            console.warn(err);
+            return NaN;
+        }
+    }
+
+    // 阶乘独立函数
+    function factorial(n) {
+        if (n < 0 || !Number.isInteger(n)) return NaN;
+        if (n === 0 || n === 1) return 1;
+        let res = 1;
+        for (let i = 2; i <= n; i++) res *= i;
+        return res;
+    }
+
+    // 格式化最终结果
+    function formatNumber(num) {
+        if (isNaN(num) || !isFinite(num)) return "Error";
+        if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
+            return num.toExponential(10);
+        }
+        let str = num.toString();
+        if (str.length > 16) str = num.toPrecision(12);
+        return str;
+    }
+
+    // 执行等号逻辑 (完整计算)
+    function computeResult() {
+        buttonFeedback();
+        if (expression.trim() === "") {
+            // 如果表达式为空，但当前显示有数值，可将其作为表达式
+            let currVal = currentDisplay.textContent;
+            if (currVal !== "0" && currVal !== "Error") {
+                expression = currVal;
+                updateExpressionDisplay();
+            } else {
+                return;
             }
-            lastTouchEnd = now;
-        }, false);
-    </script>
+        }
+        let exprToEval = expression;
+        try {
+            let result = evaluateExpression(exprToEval, isDegreeMode);
+            if (isNaN(result) || !isFinite(result)) {
+                setCurrentDisplay("Error");
+                showToast("表达式无效");
+                return;
+            }
+            let formattedResult = formatNumber(result);
+            // 添加到历史记录
+            addHistory(exprToEval, result);
+            // 显示结果
+            setCurrentDisplay(formattedResult);
+            // 将当前表达式替换为结果，以便连续运算
+            expression = formattedResult;
+            updateExpressionDisplay();
+            lastResult = result;
+        } catch (e) {
+            setCurrentDisplay("Error");
+            showToast("语法错误");
+        }
+    }
+
+    // 添加字符到表达式 (数字/运算符/括号)
+    function appendToExpression(char) {
+        buttonFeedback();
+        // 如果当前显示是 Error 且用户输入数字，重置
+        if (currentDisplay.textContent === "Error") {
+            expression = "";
+            setCurrentDisplay("0");
+        }
+        expression += char;
+        updateExpressionDisplay();
+        // 实时尝试计算并显示预览？为了符合计算器习惯，实时显示当前表达式的计算结果（可选）
+        try {
+            let preview = evaluateExpression(expression, isDegreeMode);
+            if (!isNaN(preview) && isFinite(preview)) {
+                setCurrentDisplay(formatNumber(preview));
+            } else {
+                // 如果表达式不完整，保持原有显示不变
+            }
+        } catch (e) { /* 不处理预览失败 */ }
+    }
+
+    // 处理科学函数 (一元)
+    function applyFunction(func) {
+        buttonFeedback();
+        if (func === 'π') {
+            appendToExpression('π');
+        } else if (func === 'e') {
+            appendToExpression('e');
+        } else if (func === 'x²') {
+            // 在表达式末尾添加平方
+            appendToExpression('^2');
+        } else if (func === 'xⁿ') {
+            appendToExpression('^');
+        } else if (func === '√') {
+            appendToExpression('√(');
+        } else if (func === 'ln') {
+            appendToExpression('ln(');
+        } else if (func === 'log') {
+            appendToExpression('log(');
+        } else if (func === '1/x') {
+            appendToExpression('1/(');
+        } else if (func === 'n!') {
+            appendToExpression('!');
+        } else if (func === 'sin' || func === 'cos' || func === 'tan') {
+            appendToExpression(`${func}(`);
+        } else if (func === '(' || func === ')') {
+            appendToExpression(func);
+        }
+    }
+
+    // 清除全部
+    function clearAll() {
+        buttonFeedback();
+        expression = "";
+        updateExpressionDisplay();
+        setCurrentDisplay("0");
+        lastResult = null;
+    }
+
+    // 退格
+    function deleteLast() {
+        buttonFeedback();
+        if (expression.length > 0) {
+            expression = expression.slice(0, -1);
+            updateExpressionDisplay();
+            // 重新计算预览
+            if (expression === "") {
+                setCurrentDisplay("0");
+            } else {
+                try {
+                    let preview = evaluateExpression(expression, isDegreeMode);
+                    if (!isNaN(preview) && isFinite(preview)) {
+                        setCurrentDisplay(formatNumber(preview));
+                    } else {
+                        setCurrentDisplay("...");
+                    }
+                } catch(e) {
+                    setCurrentDisplay("...");
+                }
+            }
+        } else {
+            setCurrentDisplay("0");
+        }
+    }
+
+    // 切换角度/弧度
+    function toggleDegRad() {
+        buttonFeedback();
+        isDegreeMode = !isDegreeMode;
+        const modeText = isDegreeMode ? "DEG" : "RAD";
+        degRadLabel.textContent = modeText;
+        degRadToggle.textContent = modeText;
+        degRadToggle.classList.toggle("active", isDegreeMode);
+        showToast(isDegreeMode ? "角度模式" : "弧度模式");
+        // 重新计算当前表达式预览 (更新显示)
+        if (expression !== "") {
+            try {
+                let preview = evaluateExpression(expression, isDegreeMode);
+                if (!isNaN(preview) && isFinite(preview)) {
+                    setCurrentDisplay(formatNumber(preview));
+                }
+            } catch(e) {}
+        }
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        soundToggleBtn.textContent = soundEnabled ? "🔊" : "🔇";
+        showToast(soundEnabled ? "按键音开" : "按键音关");
+        if (soundEnabled && audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+    }
+
+    // ------------------- 事件绑定 (委托) -------------------
+    function bindEvents() {
+        // 数字按钮
+        document.querySelectorAll(".btn-number").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                let num = btn.getAttribute("data-num");
+                if (num) appendToExpression(num);
+            });
+        });
+        // 运算符
+        document.querySelectorAll(".btn-operator").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                let op = btn.getAttribute("data-op");
+                if (op === "÷") appendToExpression("/");
+                else if (op === "×") appendToExpression("*");
+                else if (op === "+") appendToExpression("+");
+                else if (op === "-") appendToExpression("-");
+                else appendToExpression(op);
+            });
+        });
+        // 科学函数
+        document.querySelectorAll("[data-func]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                let func = btn.getAttribute("data-func");
+                applyFunction(func);
+            });
+        });
+        // 等号
+        equalBtn.addEventListener("click", computeResult);
+        clearAllBtn.addEventListener("click", clearAll);
+        deleteBtn.addEventListener("click", deleteLast);
+        soundToggleBtn.addEventListener("click", toggleSound);
+        degRadToggle.addEventListener("click", toggleDegRad);
+        openHistoryBtn.addEventListener("click", openHistoryPanel);
+        closeHistoryBtn.addEventListener("click", closeHistoryPanel);
+        clearHistoryBtn.addEventListener("click", clearHistory);
+        // 键盘支持
+        window.addEventListener("keydown", (e) => {
+            const key = e.key;
+            if (/[\d\.]/.test(key)) {
+                appendToExpression(key);
+            } else if (key === '+' || key === '-' || key === '*' || key === '/') {
+                let op = key;
+                if (op === '*') appendToExpression('*');
+                else if (op === '/') appendToExpression('/');
+                else appendToExpression(op);
+            } else if (key === 'Enter' || key === '=') {
+                e.preventDefault();
+                computeResult();
+            } else if (key === 'Backspace') {
+                deleteLast();
+            } else if (key === 'Escape') {
+                clearAll();
+            } else if (key === '(' || key === ')') {
+                appendToExpression(key);
+            }
+        });
+    }
+
+    // 初始化
+    function init() {
+        loadHistory();
+        bindEvents();
+        clearAll(); // 初始为0
+        setCurrentDisplay("0");
+        // 确保音频上下文在首次点击时唤醒，但已由 playClickSound 自动唤醒
+        document.body.addEventListener("click", () => {
+            if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+        }, { once: true });
+    }
+    init();
+</script>
 </body>
 </html>
