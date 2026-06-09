@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>科学计算器</title>
+    <title>科学计算器 · 修复版</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         * {
@@ -29,7 +29,6 @@
             align-items: center;
         }
 
-        /* 计算器主容器 — 自适应安全区域 */
         .calculator {
             width: 100%;
             max-width: 500px;
@@ -41,7 +40,7 @@
             padding-bottom: env(safe-area-inset-bottom, 0);
         }
 
-        /* 历史面板 (侧滑) */
+        /* 历史面板 */
         .history-panel {
             position: absolute;
             top: 0;
@@ -86,10 +85,6 @@
             color: #ff9500;
         }
 
-        .history-clear:active, .history-close:active {
-            opacity: 0.7;
-        }
-
         .history-list {
             flex: 1;
             overflow-y: auto;
@@ -112,6 +107,10 @@
             font-size: 14px;
             margin-bottom: 6px;
             font-family: monospace;
+            white-space: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
         }
 
         .history-result {
@@ -128,22 +127,24 @@
             font-size: 15px;
         }
 
-        /* 显示区域 */
+        /* 显示区域固定高度，防止键盘抖动 */
         .display {
             flex: 0 0 auto;
-            min-height: 140px;
-            padding: 20px 20px 10px 20px;
-            padding-top: max(20px, env(safe-area-inset-top, 20px));
+            height: 150px;
+            padding: 16px 20px 12px 20px;
+            padding-top: max(16px, env(safe-area-inset-top, 16px));
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
+            justify-content: space-between;
+            background: #000;
+            overflow: hidden;
         }
 
         .display-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            flex-shrink: 0;
         }
 
         .mode-indicator {
@@ -164,27 +165,56 @@
             cursor: pointer;
         }
 
+        /* 表达式滚动区 */
         .expression-area {
             text-align: right;
             color: #aaa;
-            font-size: 20px;
-            min-height: 32px;
-            word-break: break-all;
+            font-size: 18px;
             font-family: monospace;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
             margin-bottom: 8px;
+            padding-bottom: 4px;
+            flex-shrink: 0;
+        }
+        .expression-area::-webkit-scrollbar {
+            height: 2px;
+            background: transparent;
+        }
+        .expression-area::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 2px;
         }
 
+        /* 当前数字滚动区 */
         .current-area {
             text-align: right;
             color: #fff;
-            font-size: clamp(36px, 12vw, 64px);
+            font-size: clamp(32px, 12vw, 64px);
             font-weight: 350;
-            word-break: break-word;
             line-height: 1.2;
+            white-space: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            min-height: 76px;
+            flex-shrink: 0;
+        }
+        .current-area::-webkit-scrollbar {
+            height: 2px;
+            background: transparent;
+        }
+        .current-area::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 2px;
         }
 
-        /* 键盘滚动容器 (解决底部遮挡) */
+        /* 键盘滚动区 */
         .keyboard-scroll {
             flex: 1;
             overflow-y: auto;
@@ -196,24 +226,22 @@
             padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px));
         }
 
-        /* 科学按键区域 — 三行按钮整体高度压缩为原来的2/3，椭圆形 */
+        /* 科学按键 (椭圆压缩) */
         .scientific-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 6px;          /* 略微缩小间距，视觉更紧凑 */
+            gap: 6px;
             margin-bottom: 12px;
         }
 
-        /* 科学按钮专属样式：高度为宽度的2/3 (原高度压缩) + 椭圆形状 */
         .scientific-grid .btn {
-            aspect-ratio: 1 / 0.6667;    /* 高度 = 宽度 * 2/3 */
-            border-radius: 50%;          /* 宽高不等时自动形成椭圆 */
+            aspect-ratio: 1 / 0.6667;
+            border-radius: 50%;
             font-size: clamp(0.7rem, 3.5vw, 0.9rem);
             background: #3a3a3c;
             font-weight: 500;
         }
 
-        /* 角度/弧度切换按钮保持高亮风格 */
         .scientific-grid .deg-rad-btn {
             background: #1c1c1e;
             color: #ff9500;
@@ -224,14 +252,13 @@
             color: #000;
         }
 
-        /* 主键盘区域 */
+        /* 主键盘 */
         .main-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
         }
 
-        /* 通用按钮样式 (主键盘保持正方形) */
         .btn {
             aspect-ratio: 1 / 1;
             border-radius: 60px;
@@ -253,32 +280,27 @@
             filter: brightness(1.2);
         }
 
-        /* 功能按钮灰色 */
         .btn-func {
             background: #3a3a3c;
             color: #fff;
             font-size: 1.2rem;
         }
 
-        /* 运算符橙色 */
         .btn-operator {
             background: #ff9500;
             color: #fff;
             font-size: 1.9rem;
         }
 
-        /* 等号 */
         .btn-equal {
             background: #ff9500;
         }
 
-        /* 数字 */
         .btn-number {
             background: #2c2c2e;
             font-size: 1.8rem;
         }
 
-        /* 零特殊 */
         .btn-zero {
             grid-column: span 2;
             aspect-ratio: 2 / 1;
@@ -286,52 +308,24 @@
             padding-left: 28px;
         }
 
-        /* 横屏 & 小高度优化 (确保科学按钮的椭圆形状依然合理) */
         @media (max-height: 600px) {
-            .display {
-                min-height: 100px;
-                padding: 8px 16px;
-            }
-            .current-area {
-                font-size: clamp(28px, 8vw, 48px);
-            }
-            .expression-area {
-                font-size: 16px;
-            }
-            .btn {
-                font-size: 1.3rem;
-            }
-            .scientific-grid .btn {
-                font-size: clamp(0.65rem, 3vw, 0.8rem);
-            }
-            .btn-func {
-                font-size: 1rem;
-            }
+            .display { height: 120px; padding: 8px 16px; }
+            .current-area { font-size: clamp(26px, 8vw, 48px); min-height: 60px; }
+            .expression-area { font-size: 15px; }
+            .btn { font-size: 1.3rem; }
+            .scientific-grid .btn { font-size: clamp(0.65rem, 3vw, 0.8rem); }
+            .btn-func { font-size: 1rem; }
         }
 
         @media (orientation: landscape) and (max-height: 480px) {
-            .calculator {
-                flex-direction: row;
-            }
-            .display {
-                flex: 0 0 35%;
-                justify-content: center;
-            }
-            .keyboard-scroll {
-                flex: 1;
-            }
-            .scientific-grid {
-                gap: 5px;
-            }
-            .main-grid {
-                gap: 6px;
-            }
-            .scientific-grid .btn {
-                aspect-ratio: 1 / 0.7;
-            }
+            .calculator { flex-direction: row; }
+            .display { flex: 0 0 35%; height: 100%; justify-content: center; }
+            .keyboard-scroll { flex: 1; }
+            .scientific-grid { gap: 5px; }
+            .main-grid { gap: 6px; }
+            .scientific-grid .btn { aspect-ratio: 1 / 0.7; }
         }
 
-        /* 反馈toast */
         .feedback-toast {
             position: fixed;
             bottom: 100px;
@@ -356,7 +350,6 @@
 </head>
 <body>
 <div class="calculator">
-    <!-- 历史侧边栏 -->
     <div class="history-panel" id="historyPanel">
         <div class="history-header">
             <span class="history-clear" id="clearHistoryBtn">清除全部</span>
@@ -368,7 +361,6 @@
         </div>
     </div>
 
-    <!-- 显示区域 -->
     <div class="display">
         <div class="display-header">
             <span class="mode-indicator" id="degRadLabel">DEG</span>
@@ -378,10 +370,8 @@
         <div class="current-area" id="currentDisplay">0</div>
     </div>
 
-    <!-- 可滚动键盘区 -->
     <div class="keyboard-scroll">
         <div class="keyboard-inner">
-            <!-- 科学函数面板 (三行, 按钮已压缩为椭圆) -->
             <div class="scientific-grid" id="scientificGrid">
                 <button class="btn deg-rad-btn" id="degRadToggle">DEG</button>
                 <button class="btn" data-func="sin">sin</button>
@@ -402,7 +392,6 @@
                 <button class="btn" data-func="n!">n!</button>
             </div>
 
-            <!-- 主键盘 (保持不变) -->
             <div class="main-grid">
                 <button class="btn btn-func" id="soundToggleBtn">🔊</button>
                 <button class="btn btn-func" id="clearAllBtn">AC</button>
@@ -431,14 +420,13 @@
         </div>
     </div>
 </div>
-
 <div class="feedback-toast" id="toastMsg"></div>
 
 <script>
     // ------------------- 全局状态 -------------------
-    let expression = "";          // 当前完整表达式字符串
-    let lastResult = null;        // 上一次计算结果（用于连续运算）
-    let isDegreeMode = true;      // true: DEG, false: RAD
+    let expression = "";
+    let resetOnNextInput = false;     // 等号或历史点后，下次输入数字需重置
+    let isDegreeMode = true;
     let soundEnabled = true;
     let historyList = [];
 
@@ -458,7 +446,6 @@
     const clearHistoryBtn = document.getElementById("clearHistoryBtn");
     const toastMsg = document.getElementById("toastMsg");
 
-    // 音频上下文 (修复PWA无声)
     let audioCtx = null;
 
     // ------------------- 辅助函数 -------------------
@@ -468,19 +455,16 @@
         setTimeout(() => toastMsg.classList.remove("show"), duration);
     }
 
-    // 震动反馈
     function vibrate() {
         if (navigator.vibrate) navigator.vibrate(8);
     }
 
-    // 点击音效 (每次用户点击按钮时调用)
     async function playClickSound() {
         if (!soundEnabled) return;
         try {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            // 关键：如果处于 suspended 状态，必须唤醒
             if (audioCtx.state === "suspended") {
                 await audioCtx.resume();
             }
@@ -494,7 +478,7 @@
             gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.06);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.06);
-        } catch(e) { /* 静默失败 */ }
+        } catch(e) { /* 静默 */ }
     }
 
     function buttonFeedback() {
@@ -502,7 +486,6 @@
         playClickSound();
     }
 
-    // 保存历史到 localStorage
     function saveHistory() {
         localStorage.setItem("calc_history_v2", JSON.stringify(historyList.slice(0, 50)));
     }
@@ -520,6 +503,10 @@
     }
 
     function addHistory(expr, resultVal) {
+        // 避免重复记录相同表达式和结果
+        if (historyList.length > 0 && historyList[0].expr === expr && historyList[0].result === formatNumber(resultVal)) {
+            return;
+        }
         const resultStr = typeof resultVal === 'number' ? formatNumber(resultVal) : String(resultVal);
         historyList.unshift({
             expr: expr,
@@ -543,19 +530,19 @@
                 <div class="history-result">${escapeHtml(item.result)}</div>
             </div>
         `).join('');
-        // 绑定点击复用历史结果
         document.querySelectorAll('.history-item').forEach(el => {
             el.addEventListener('click', (e) => {
                 const idx = parseInt(el.dataset.idx);
                 if (!isNaN(idx) && historyList[idx]) {
                     buttonFeedback();
                     const pastResult = historyList[idx].result;
+                    // 重置表达式，并使用历史结果作为新起点
                     expression = "";
-                    updateExpressionDisplay();
                     setCurrentDisplay(pastResult);
-                    lastResult = parseFloat(pastResult);
-                    if (isNaN(lastResult)) lastResult = null;
+                    updateExpressionDisplay();
+                    resetOnNextInput = true;   // 下次输入数字会覆盖
                     closeHistoryPanel();
+                    autoScrollCurrentDisplay();
                 }
                 e.stopPropagation();
             });
@@ -589,21 +576,21 @@
         }
     }
 
-    // 更新表达式显示区
     function updateExpressionDisplay() {
         if (expression === "") {
             expressionDisplay.textContent = "";
         } else {
             let disp = expression.replace(/\*/g, '×').replace(/\//g, '÷');
             expressionDisplay.textContent = disp;
+            setTimeout(() => {
+                expressionDisplay.scrollLeft = expressionDisplay.scrollWidth;
+            }, 10);
         }
     }
 
-    // 设置当前显示 (底部大数字)
     function setCurrentDisplay(value) {
         if (value === undefined || value === null) value = "0";
         let str = String(value);
-        // 美化数字格式
         let num = parseFloat(str);
         if (!isNaN(num) && isFinite(num)) {
             if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
@@ -614,53 +601,84 @@
             }
         }
         currentDisplay.textContent = str;
+        autoScrollCurrentDisplay();
     }
 
-    // 获取当前显示值 (用于运算)
-    function getCurrentDisplayValue() {
-        let raw = currentDisplay.textContent;
-        if (raw === "Error") return NaN;
-        let num = parseFloat(raw);
-        return isNaN(num) ? 0 : num;
+    function autoScrollCurrentDisplay() {
+        setTimeout(() => {
+            if (currentDisplay) {
+                currentDisplay.scrollLeft = currentDisplay.scrollWidth;
+            }
+        }, 10);
     }
 
-    // 计算表达式 (支持四则运算、括号、幂、科学函数)
+    // 增强的阶乘处理：递归替换 expression! 为 factorial(expression)
+    function processFactorials(expr) {
+        // 匹配任意表达式后跟 !，表达式可以包含括号和运算符
+        // 使用正则 + 递归查找最外层括号
+        let result = expr;
+        let changed = true;
+        while (changed) {
+            changed = false;
+            result = result.replace(/([^!]+?)!/g, (match, content) => {
+                // 避免处理已经包裹 factorial 的内容
+                if (match.includes('factorial')) return match;
+                // 寻找完整的子表达式：可能包含括号
+                let subExpr = content.trim();
+                // 如果内容以括号开头，尝试匹配完整括号组
+                if (subExpr.startsWith('(')) {
+                    let depth = 0;
+                    let endIndex = 0;
+                    for (let i = 0; i < subExpr.length; i++) {
+                        if (subExpr[i] === '(') depth++;
+                        if (subExpr[i] === ')') depth--;
+                        if (depth === 0) { endIndex = i + 1; break; }
+                    }
+                    if (endIndex > 0) {
+                        subExpr = subExpr.substring(0, endIndex);
+                    }
+                }
+                changed = true;
+                return `factorial(${subExpr})`;
+            });
+        }
+        return result;
+    }
+
+    // 表达式求值引擎 (支持四则、括号、幂、函数)
     function evaluateExpression(expr, degreeMode) {
-        // 预处理: 替换符号, 将 × ÷ 转换为 * / , 将 ^ 转换为 **
         let processed = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
-        // 处理 π 和 e
         processed = processed.replace(/π/g, 'Math.PI').replace(/e(?![a-zA-Z0-9_])/g, 'Math.E');
-        // 处理科学函数: sin, cos, tan, ln, log, sqrt 等
-        // 需要将角度模式下的 sin/cos/tan 进行弧度转换
+        
+        // 处理阶乘 (支持嵌套括号)
+        processed = processFactorials(processed);
+        
         if (degreeMode) {
-            // 替换 sin( → sin_deg( , 自定义函数处理
             processed = processed.replace(/sin\(/g, 'sin_deg(');
             processed = processed.replace(/cos\(/g, 'cos_deg(');
             processed = processed.replace(/tan\(/g, 'tan_deg(');
         }
-        // 其他函数映射
         processed = processed.replace(/ln\(/g, 'Math.log(');
         processed = processed.replace(/log\(/g, 'Math.log10(');
         processed = processed.replace(/√\(/g, 'Math.sqrt(');
-        // 处理 x² (平方) 注意后面可能跟数字，转化成平方
         processed = processed.replace(/(\d+(?:\.\d+)?|\))\s*x²/g, '($1)**2');
         processed = processed.replace(/x²/g, '**2');
-        // 处理 1/x
         processed = processed.replace(/1\/x\(/g, '1/(');
-        // 处理 n! 阶乘
-        processed = processed.replace(/(\d+(?:\.\d+)?)!|\(([^)]+)\)!/g, (match, p1, p2) => {
-            let num = p1 !== undefined ? parseFloat(p1) : eval(`(${p2})`);
-            return factorial(num);
-        });
 
-        // 定义角度转弧度辅助函数
         const toRad = (deg) => deg * Math.PI / 180;
         const sin_deg = (x) => Math.sin(toRad(x));
         const cos_deg = (x) => Math.cos(toRad(x));
         const tan_deg = (x) => Math.tan(toRad(x));
+        
+        function factorial(n) {
+            if (n < 0 || !Number.isInteger(n)) return NaN;
+            if (n === 0 || n === 1) return 1;
+            let res = 1;
+            for (let i = 2; i <= n; i++) res *= i;
+            return res;
+        }
 
         try {
-            // 使用 Function 构造器，安全且支持严格模式
             const fn = new Function('Math', 'sin_deg', 'cos_deg', 'tan_deg', 'factorial', `'use strict'; return (${processed})`);
             let result = fn(Math, sin_deg, cos_deg, tan_deg, factorial);
             if (!isFinite(result)) throw new Error("无效结果");
@@ -671,16 +689,6 @@
         }
     }
 
-    // 阶乘独立函数
-    function factorial(n) {
-        if (n < 0 || !Number.isInteger(n)) return NaN;
-        if (n === 0 || n === 1) return 1;
-        let res = 1;
-        for (let i = 2; i <= n; i++) res *= i;
-        return res;
-    }
-
-    // 格式化最终结果
     function formatNumber(num) {
         if (isNaN(num) || !isFinite(num)) return "Error";
         if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
@@ -691,11 +699,9 @@
         return str;
     }
 
-    // 执行等号逻辑 (完整计算)
     function computeResult() {
         buttonFeedback();
         if (expression.trim() === "") {
-            // 如果表达式为空，但当前显示有数值，可将其作为表达式
             let currVal = currentDisplay.textContent;
             if (currVal !== "0" && currVal !== "Error") {
                 expression = currVal;
@@ -713,85 +719,92 @@
                 return;
             }
             let formattedResult = formatNumber(result);
-            // 添加到历史记录
             addHistory(exprToEval, result);
-            // 显示结果
             setCurrentDisplay(formattedResult);
-            // 将当前表达式替换为结果，以便连续运算
             expression = formattedResult;
             updateExpressionDisplay();
-            lastResult = result;
+            resetOnNextInput = true;   // 等号后按数字应重置
         } catch (e) {
             setCurrentDisplay("Error");
             showToast("语法错误");
         }
     }
 
-    // 添加字符到表达式 (数字/运算符/括号)
+    // 检查字符是否为运算符 (不包括负号单独处理)
+    function isOperator(ch) {
+        return ch === '+' || ch === '-' || ch === '*' || ch === '/' || ch === '×' || ch === '÷';
+    }
+
     function appendToExpression(char) {
         buttonFeedback();
-        // 如果当前显示是 Error 且用户输入数字，重置
-        if (currentDisplay.textContent === "Error") {
+        // 重置标志：如果用户输入数字或小数点，且需要重置，则清空表达式
+        if (resetOnNextInput && /[\d.]/.test(char)) {
             expression = "";
-            setCurrentDisplay("0");
+            resetOnNextInput = false;
         }
+        // 连续运算符纠正：如果表达式最后是运算符，新输入也是运算符，则替换最后一个运算符
+        if (expression.length > 0 && isOperator(expression[expression.length-1]) && isOperator(char)) {
+            // 替换最后一个字符
+            expression = expression.slice(0, -1) + char;
+            updateExpressionDisplay();
+            // 预览更新
+            try {
+                let preview = evaluateExpression(expression, isDegreeMode);
+                if (!isNaN(preview) && isFinite(preview)) {
+                    setCurrentDisplay(formatNumber(preview));
+                } else {
+                    // 如果预览无效，保持当前显示（不显示...）
+                }
+            } catch(e) {}
+            return;
+        }
+        // 正常追加
         expression += char;
         updateExpressionDisplay();
-        // 实时尝试计算并显示预览（可选）
+        // 实时预览
         try {
             let preview = evaluateExpression(expression, isDegreeMode);
             if (!isNaN(preview) && isFinite(preview)) {
                 setCurrentDisplay(formatNumber(preview));
             } else {
-                // 如果表达式不完整，保持原有显示不变
+                // 表达式不完整时，保留原有显示不变（不再显示 ...）
             }
-        } catch (e) { /* 不处理预览失败 */ }
+        } catch (e) { /* 忽略 */ }
+        autoScrollCurrentDisplay();
     }
 
-    // 处理科学函数 (一元)
     function applyFunction(func) {
         buttonFeedback();
-        if (func === 'π') {
-            appendToExpression('π');
-        } else if (func === 'e') {
-            appendToExpression('e');
-        } else if (func === 'x²') {
-            appendToExpression('^2');
-        } else if (func === 'xⁿ') {
-            appendToExpression('^');
-        } else if (func === '√') {
-            appendToExpression('√(');
-        } else if (func === 'ln') {
-            appendToExpression('ln(');
-        } else if (func === 'log') {
-            appendToExpression('log(');
-        } else if (func === '1/x') {
-            appendToExpression('1/(');
-        } else if (func === 'n!') {
-            appendToExpression('!');
-        } else if (func === 'sin' || func === 'cos' || func === 'tan') {
-            appendToExpression(`${func}(`);
-        } else if (func === '(' || func === ')') {
-            appendToExpression(func);
+        // 函数会改变表达式，应清除重置标志
+        if (resetOnNextInput) {
+            resetOnNextInput = false;
         }
+        if (func === 'π') appendToExpression('π');
+        else if (func === 'e') appendToExpression('e');
+        else if (func === 'x²') appendToExpression('^2');
+        else if (func === 'xⁿ') appendToExpression('^');
+        else if (func === '√') appendToExpression('√(');
+        else if (func === 'ln') appendToExpression('ln(');
+        else if (func === 'log') appendToExpression('log(');
+        else if (func === '1/x') appendToExpression('1/(');
+        else if (func === 'n!') appendToExpression('!');
+        else if (func === 'sin' || func === 'cos' || func === 'tan') appendToExpression(`${func}(`);
+        else if (func === '(' || func === ')') appendToExpression(func);
     }
 
-    // 清除全部
     function clearAll() {
         buttonFeedback();
         expression = "";
         updateExpressionDisplay();
         setCurrentDisplay("0");
-        lastResult = null;
+        resetOnNextInput = false;
     }
 
-    // 退格
     function deleteLast() {
         buttonFeedback();
         if (expression.length > 0) {
             expression = expression.slice(0, -1);
             updateExpressionDisplay();
-            // 重新计算预览
             if (expression === "") {
                 setCurrentDisplay("0");
             } else {
@@ -800,18 +813,20 @@
                     if (!isNaN(preview) && isFinite(preview)) {
                         setCurrentDisplay(formatNumber(preview));
                     } else {
-                        setCurrentDisplay("...");
+                        // 表达式不完整，保留当前显示（不改变）
+                        // 什么也不做，避免显示 ...
                     }
                 } catch(e) {
-                    setCurrentDisplay("...");
+                    // 保留原显示
                 }
             }
         } else {
             setCurrentDisplay("0");
         }
+        resetOnNextInput = false;
+        autoScrollCurrentDisplay();
     }
 
-    // 切换角度/弧度
     function toggleDegRad() {
         buttonFeedback();
         isDegreeMode = !isDegreeMode;
@@ -820,7 +835,6 @@
         degRadToggle.textContent = modeText;
         degRadToggle.classList.toggle("active", isDegreeMode);
         showToast(isDegreeMode ? "角度模式" : "弧度模式");
-        // 重新计算当前表达式预览 (更新显示)
         if (expression !== "") {
             try {
                 let preview = evaluateExpression(expression, isDegreeMode);
@@ -840,9 +854,8 @@
         }
     }
 
-    // ------------------- 事件绑定 (委托) -------------------
+    // ------------------- 事件绑定 -------------------
     function bindEvents() {
-        // 数字按钮
         document.querySelectorAll(".btn-number").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -850,7 +863,6 @@
                 if (num) appendToExpression(num);
             });
         });
-        // 运算符
         document.querySelectorAll(".btn-operator").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 let op = btn.getAttribute("data-op");
@@ -859,16 +871,15 @@
                 else if (op === "+") appendToExpression("+");
                 else if (op === "-") appendToExpression("-");
                 else appendToExpression(op);
+                resetOnNextInput = false;   // 按运算符后不应重置
             });
         });
-        // 科学函数
         document.querySelectorAll("[data-func]").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 let func = btn.getAttribute("data-func");
                 applyFunction(func);
             });
         });
-        // 等号
         equalBtn.addEventListener("click", computeResult);
         clearAllBtn.addEventListener("click", clearAll);
         deleteBtn.addEventListener("click", deleteLast);
@@ -877,7 +888,6 @@
         openHistoryBtn.addEventListener("click", openHistoryPanel);
         closeHistoryBtn.addEventListener("click", closeHistoryPanel);
         clearHistoryBtn.addEventListener("click", clearHistory);
-        // 键盘支持
         window.addEventListener("keydown", (e) => {
             const key = e.key;
             if (/[\d\.]/.test(key)) {
@@ -887,6 +897,7 @@
                 if (op === '*') appendToExpression('*');
                 else if (op === '/') appendToExpression('/');
                 else appendToExpression(op);
+                resetOnNextInput = false;
             } else if (key === 'Enter' || key === '=') {
                 e.preventDefault();
                 computeResult();
@@ -900,13 +911,11 @@
         });
     }
 
-    // 初始化
     function init() {
         loadHistory();
         bindEvents();
-        clearAll(); // 初始为0
+        clearAll();
         setCurrentDisplay("0");
-        // 确保音频上下文在首次点击时唤醒，但已由 playClickSound 自动唤醒
         document.body.addEventListener("click", () => {
             if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
         }, { once: true });
@@ -914,14 +923,9 @@
     init();
 </script>
 <script>
+  // 可选 Service Worker (文件缺失不影响使用)
   if ('serviceWorker' in navigator) {
-    // 注意：如果站点在子目录（如 /project/），注册路径需要包含子目录前缀
-    // 一般使用相对路径 './sv.js' 或绝对路径 '/project/sv.js'
-    navigator.serviceWorker.register('./sv.js').then(reg => {
-      console.log('Service Worker 注册成功，作用域:', reg.scope);
-    }).catch(err => {
-      console.error('Service Worker 注册失败:', err);
-    });
+    navigator.serviceWorker.register('./sv.js').catch(err => console.log('SW 未注册'));
   }
 </script>
 </body>
