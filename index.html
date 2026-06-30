@@ -925,7 +925,7 @@
 <script>
   // 可选 Service Worker (文件缺失不影响使用)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sv.js').catch(err => console.log('SW 未注册'));
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 未注册'));
   }
 </script>
 </body>
