@@ -216,9 +216,11 @@
         .keyboard-scroll {
             flex: 1;
             min-height: 0;
+            overflow-y: auto;
             padding: 8px 8px 0 8px;
             display: flex;
             flex-direction: column;
+            -webkit-overflow-scrolling: touch;
         }
 
         .keyboard-inner {
@@ -267,7 +269,16 @@
         .main-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(5, 1fr);
             gap: 8px;
+        }
+
+        .main-grid .btn {
+            aspect-ratio: auto;
+        }
+
+        .main-grid .btn-zero {
+            aspect-ratio: auto;
         }
 
         .btn {
@@ -314,7 +325,6 @@
 
         .btn-zero {
             grid-column: span 2;
-            aspect-ratio: 2 / 1;
             justify-content: flex-start;
             padding-left: 28px;
         }
