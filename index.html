@@ -720,10 +720,9 @@
         if (num === undefined || num === null) return "0";
         if (typeof num === 'string') num = parseFloat(num);
         if (!isFinite(num)) return num === Infinity ? "Infinity" : num === -Infinity ? "-Infinity" : "Error";
-        if (Math.abs(num) > 1e15 || (Math.abs(num) < 1e-10 && num !== 0))
-            return num.toExponential(10);
         let str = String(num);
-        if (str.length > 14) str = num.toPrecision(12);
+        if (str.length > 12) str = num.toExponential(8);
+        if (str.length > 14) str = num.toExponential(6);
         return str;
     }
 
