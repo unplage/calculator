@@ -17,7 +17,7 @@
         }
 
         html, body {
-            height: 100%;
+            height: 100dvh;
             overflow: hidden;
             background: #000;
         }
@@ -31,8 +31,8 @@
 
         .calculator {
             width: 100%;
-            max-width: 500px;
-            height: 100%;
+            max-width: 480px;
+            height: 100dvh;
             background: #000;
             display: flex;
             flex-direction: column;
@@ -127,7 +127,6 @@
             font-size: 15px;
         }
 
-        /* 显示区域固定高度，防止键盘抖动 */
         .display {
             flex: 0 0 auto;
             height: 150px;
@@ -214,16 +213,28 @@
             border-radius: 2px;
         }
 
-        /* 键盘滚动区 */
         .keyboard-scroll {
             flex: 1;
-            overflow-y: auto;
+            min-height: 0;
             padding: 8px 8px 0 8px;
-            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
         }
 
         .keyboard-inner {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px));
+        }
+
+        .keyboard-inner .scientific-grid {
+            flex: 0 0 auto;
+        }
+
+        .keyboard-inner .main-grid {
+            flex: 1;
+            align-content: stretch;
         }
 
         /* 科学按键 (椭圆压缩) */
@@ -309,21 +320,30 @@
         }
 
         @media (max-height: 600px) {
-            .display { height: 120px; padding: 8px 16px; }
-            .current-area { font-size: clamp(26px, 8vw, 48px); min-height: 60px; }
+            .display { height: 100px; padding: 8px 16px; }
+            .current-area { font-size: clamp(26px, 8vw, 48px); min-height: 54px; }
             .expression-area { font-size: 15px; }
             .btn { font-size: 1.3rem; }
             .scientific-grid .btn { font-size: clamp(0.65rem, 3vw, 0.8rem); }
             .btn-func { font-size: 1rem; }
         }
 
-        @media (orientation: landscape) and (max-height: 480px) {
-            .calculator { flex-direction: row; }
-            .display { flex: 0 0 35%; height: 100%; justify-content: center; }
+        @media (orientation: landscape) and (max-height: 600px) {
+            .calculator { flex-direction: row; max-width: none; }
+            .display { flex: 0 0 35%; min-height: 0; height: 100%; justify-content: center; }
             .keyboard-scroll { flex: 1; }
             .scientific-grid { gap: 5px; }
             .main-grid { gap: 6px; }
+            .main-grid .btn { aspect-ratio: auto; }
             .scientific-grid .btn { aspect-ratio: 1 / 0.7; }
+        }
+
+        @media (min-width: 768px) {
+            .calculator { border-radius: 20px; max-height: 90dvh; height: 90dvh; margin: 5dvh auto; }
+            body { background: #111; }
+            .current-area { font-size: clamp(32px, 2.5vw, 56px); }
+            .btn { font-size: clamp(1.3rem, 1.5vw, 1.6rem); }
+            .scientific-grid .btn { font-size: clamp(0.7rem, 0.9vw, 0.9rem); }
         }
 
         .feedback-toast {
@@ -364,7 +384,7 @@
     <div class="display">
         <div class="display-header">
             <span class="mode-indicator" id="degRadLabel">DEG</span>
-            <span class="history-btn" id="openHistoryBtn">📋 历史</span>
+            <span class="history-btn" id="openHistoryBtn">历史</span>
         </div>
         <div class="expression-area" id="expressionDisplay"></div>
         <div class="current-area" id="currentDisplay">0</div>
@@ -589,17 +609,7 @@
     }
 
     function setCurrentDisplay(value) {
-        if (value === undefined || value === null) value = "0";
-        let str = String(value);
-        let num = parseFloat(str);
-        if (!isNaN(num) && isFinite(num)) {
-            if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
-                str = num.toExponential(10);
-            } else {
-                str = num.toLocaleString('en-US', { maximumFractionDigits: 12 });
-                str = str.replace(/,/g, '');
-            }
-        }
+        let str = formatNumber(value);
         currentDisplay.textContent = str;
         autoScrollCurrentDisplay();
     }
@@ -648,7 +658,9 @@
     // 表达式求值引擎 (支持四则、括号、幂、函数)
     function evaluateExpression(expr, degreeMode) {
         let processed = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
+        processed = processed.replace(/(\d\.?\d*)[eE]([+-]?\d+)/g, '$1__SCI__$2');
         processed = processed.replace(/π/g, 'Math.PI').replace(/e(?![a-zA-Z0-9_])/g, 'Math.E');
+        processed = processed.replace(/__SCI__/g, 'e');
         
         // 处理阶乘 (支持嵌套括号)
         processed = processFactorials(processed);
@@ -668,7 +680,12 @@
         const toRad = (deg) => deg * Math.PI / 180;
         const sin_deg = (x) => Math.sin(toRad(x));
         const cos_deg = (x) => Math.cos(toRad(x));
-        const tan_deg = (x) => Math.tan(toRad(x));
+        const tan_deg = (x) => {
+            const rad = toRad(x);
+            const cos = Math.cos(rad);
+            if (Math.abs(cos) < 1e-12) return Infinity;
+            return Math.tan(rad);
+        };
         
         function factorial(n) {
             if (n < 0 || !Number.isInteger(n)) return NaN;
@@ -681,7 +698,7 @@
         try {
             const fn = new Function('Math', 'sin_deg', 'cos_deg', 'tan_deg', 'factorial', `'use strict'; return (${processed})`);
             let result = fn(Math, sin_deg, cos_deg, tan_deg, factorial);
-            if (!isFinite(result)) throw new Error("无效结果");
+            if (isNaN(result)) throw new Error("无效结果");
             return result;
         } catch (err) {
             console.warn(err);
@@ -690,12 +707,13 @@
     }
 
     function formatNumber(num) {
-        if (isNaN(num) || !isFinite(num)) return "Error";
-        if (Math.abs(num) > 1e12 || (Math.abs(num) < 1e-8 && num !== 0)) {
+        if (num === undefined || num === null) return "0";
+        if (typeof num === 'string') num = parseFloat(num);
+        if (!isFinite(num)) return num === Infinity ? "Infinity" : num === -Infinity ? "-Infinity" : "Error";
+        if (Math.abs(num) > 1e15 || (Math.abs(num) < 1e-10 && num !== 0))
             return num.toExponential(10);
-        }
-        let str = num.toString();
-        if (str.length > 16) str = num.toPrecision(12);
+        let str = String(num);
+        if (str.length > 14) str = num.toPrecision(12);
         return str;
     }
 
@@ -703,17 +721,14 @@
         buttonFeedback();
         if (expression.trim() === "") {
             let currVal = currentDisplay.textContent;
-            if (currVal !== "0" && currVal !== "Error") {
-                expression = currVal;
-                updateExpressionDisplay();
-            } else {
-                return;
-            }
+            if (currVal === "0" || currVal === "Error" || currVal === "Infinity" || currVal === "-Infinity") return;
+            expression = currVal;
+            updateExpressionDisplay();
         }
         let exprToEval = expression;
         try {
             let result = evaluateExpression(exprToEval, isDegreeMode);
-            if (isNaN(result) || !isFinite(result)) {
+            if (isNaN(result)) {
                 setCurrentDisplay("Error");
                 showToast("表达式无效");
                 return;
@@ -721,9 +736,9 @@
             let formattedResult = formatNumber(result);
             addHistory(exprToEval, result);
             setCurrentDisplay(formattedResult);
-            expression = formattedResult;
+            expression = result.toString();
             updateExpressionDisplay();
-            resetOnNextInput = true;   // 等号后按数字应重置
+            resetOnNextInput = true;
         } catch (e) {
             setCurrentDisplay("Error");
             showToast("语法错误");
@@ -786,7 +801,15 @@
         else if (func === '√') appendToExpression('√(');
         else if (func === 'ln') appendToExpression('ln(');
         else if (func === 'log') appendToExpression('log(');
-        else if (func === '1/x') appendToExpression('1/(');
+        else if (func === '1/x') {
+            let curr = parseFloat(currentDisplay.textContent.replace(/,/g, ''));
+            if (curr && isFinite(curr)) {
+                expression = "1/(" + curr + ")";
+                updateExpressionDisplay();
+                computeResult();
+                return;
+            }
+        }
         else if (func === 'n!') appendToExpression('!');
         else if (func === 'sin' || func === 'cos' || func === 'tan') appendToExpression(`${func}(`);
         else if (func === '(' || func === ')') appendToExpression(func);
@@ -907,6 +930,9 @@
                 clearAll();
             } else if (key === '(' || key === ')') {
                 appendToExpression(key);
+            } else if (key === 'e') {
+                if (resetOnNextInput) { expression = ""; resetOnNextInput = false; }
+                applyFunction('e');
             }
         });
     }
